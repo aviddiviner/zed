@@ -3,9 +3,5 @@
 // To see all default settings, run "open default settings"
 // from the command palette (cmd-shift-p)
 {
-  "theme": {
-    "mode": "system",
-    "light": "One Light",
-    "dark": "One Dark"
-  }
+  "theme": "Aleph Latte",
 }
