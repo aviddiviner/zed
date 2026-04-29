@@ -1,0 +1,52 @@
+#!/bin/bash
+set -euo pipefail
+
+# Build and install Aleph Dev as a macOS .app bundle.
+#
+# Usage:
+#   script/build-aleph          # build + install to /Applications
+#   script/build-aleph --build  # build only (no bundle/install)
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CRATE_DIR="$ROOT_DIR/crates/aleph"
+CARGO_TOML="$CRATE_DIR/Cargo.toml"
+
+export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
+
+BUILD_ONLY=false
+if [[ "${1:-}" == "--build" ]]; then
+    BUILD_ONLY=true
+fi
+
+echo "==> Building aleph (release)..."
+cargo build --release -p aleph
+
+if $BUILD_ONLY; then
+    echo "==> Build complete: target/release/aleph"
+    exit 0
+fi
+
+echo "==> Bundling Aleph Dev.app..."
+
+# cargo-bundle requires [package.metadata.bundle] but we store it as
+# [package.metadata.bundle-dev]. Temporarily rename it for bundling.
+cp "$CARGO_TOML" "$CARGO_TOML.backup"
+sed -i '' 's/package.metadata.bundle-dev/package.metadata.bundle/' "$CARGO_TOML"
+
+cleanup() {
+    mv "$CARGO_TOML.backup" "$CARGO_TOML"
+}
+trap cleanup EXIT
+
+cd "$CRATE_DIR"
+CARGO_BUNDLE_SKIP_BUILD=true cargo bundle --release --select-workspace-root
+cd "$ROOT_DIR"
+
+APP_PATH="$ROOT_DIR/target/release/bundle/osx/Aleph Dev.app"
+
+echo "==> Installing to /Applications..."
+rm -rf "/Applications/Aleph Dev.app"
+cp -r "$APP_PATH" /Applications/
+
+echo "==> Done! Aleph Dev.app installed to /Applications."
