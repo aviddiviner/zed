@@ -1,6 +1,7 @@
 mod aleph;
 
 use anyhow::{Context as _, Result};
+use futures::StreamExt;
 use clap::Parser;
 use client::{Client, ProxySettings, RefreshLlmTokenListener, UserStore};
 use db::kvp::KeyValueStore;
@@ -268,6 +269,9 @@ fn main() {
         );
         command_palette::init(cx);
 
+        load_user_themes_in_background(fs.clone(), cx);
+        watch_themes(fs.clone(), cx);
+
         language_model::init(cx);
         RefreshLlmTokenListener::register(
             app_state.client.clone(),
@@ -416,6 +420,7 @@ fn init_paths() {
         paths::database_dir(),
         paths::logs_dir(),
         paths::temp_dir(),
+        paths::themes_dir(),
     ];
     for path in dirs {
         if let Err(e) = std::fs::create_dir_all(path) {
@@ -426,6 +431,77 @@ fn init_paths() {
 
 fn stdout_is_a_pty() -> bool {
     io::stdout().is_terminal()
+}
+
+/// Spawns a background task to load the user themes from the themes directory.
+fn load_user_themes_in_background(fs: Arc<dyn fs::Fs>, cx: &mut App) {
+    cx.spawn({
+        let fs = fs.clone();
+        async move |cx| {
+            let theme_registry = cx.update(|cx| ThemeRegistry::global(cx));
+            let themes_dir = paths::themes_dir().as_ref();
+            match fs
+                .metadata(themes_dir)
+                .await
+                .ok()
+                .flatten()
+                .map(|m| m.is_dir)
+            {
+                Some(is_dir) => {
+                    anyhow::ensure!(is_dir, "Themes dir path {themes_dir:?} is not a directory")
+                }
+                None => {
+                    fs.create_dir(themes_dir).await.with_context(|| {
+                        format!("Failed to create themes dir at path {themes_dir:?}")
+                    })?;
+                }
+            }
+
+            let mut theme_paths = fs
+                .read_dir(themes_dir)
+                .await
+                .with_context(|| format!("reading themes from {themes_dir:?}"))?;
+
+            while let Some(theme_path) = theme_paths.next().await {
+                let Some(theme_path) = theme_path.log_err() else {
+                    continue;
+                };
+                let Some(bytes) = fs.load_bytes(&theme_path).await.log_err() else {
+                    continue;
+                };
+
+                theme_settings::load_user_theme(&theme_registry, &bytes).log_err();
+            }
+
+            cx.update(theme_settings::reload_theme);
+            anyhow::Ok(())
+        }
+    })
+    .detach_and_log_err(cx);
+}
+
+/// Spawns a background task to watch the themes directory for changes.
+fn watch_themes(fs: Arc<dyn fs::Fs>, cx: &mut App) {
+    use std::time::Duration;
+    cx.spawn(async move |cx| {
+        let (mut events, _) = fs
+            .watch(paths::themes_dir(), Duration::from_millis(100))
+            .await;
+
+        while let Some(paths) = events.next().await {
+            for event in paths {
+                if fs.metadata(&event.path).await.ok().flatten().is_some() {
+                    let theme_registry = cx.update(|cx| ThemeRegistry::global(cx));
+                    if let Some(bytes) = fs.load_bytes(&event.path).await.log_err()
+                        && theme_settings::load_user_theme(&theme_registry, &bytes).log_err().is_some()
+                    {
+                        cx.update(theme_settings::reload_theme);
+                    }
+                }
+            }
+        }
+    })
+    .detach()
 }
 
 fn load_embedded_fonts(cx: &App) {

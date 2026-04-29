@@ -116,6 +116,9 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [x] JSONC recognition for `~/.config/aleph/*.json`
 - [x] Font size zoom keybindings (cmd+/cmd- handlers registered)
 - [x] Welcome page shown on first open (instead of empty buffer)
+- [x] User theme loading from `~/.config/aleph/themes/` (with hot-reload on file change)
+- [ ] Bundle "Aleph Latte" theme into `assets/themes/` as the built-in default
+- [ ] Set "Aleph Latte" as the default theme in `assets/settings/default.json`
 - [ ] Repurpose outline panel → chapter/section/scene navigator
 - [ ] Markdown as the default/primary file type (new files open as .md)
 - [ ] Distraction-free / focus mode (minimal chrome, centered text)
