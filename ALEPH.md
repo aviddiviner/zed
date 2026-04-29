@@ -109,9 +109,19 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 
 - [x] Default settings for writing: soft wrap, 18px font, comfortable line height, no line numbers, no scrollbar, no wrap guides
 - [x] Defaults changed at source (`assets/settings/default.json`, `crates/paths`) — no workaround layers
+- [x] Rewrite agent system prompt for writing collaborator persona
+- [x] Rewrite agent templates (`create_file_prompt`, `diff_judge`) — no more "expert engineer"
+- [x] Remove DiagnosticsTool and TerminalTool from agent tool set (15 writing-relevant tools remain)
+- [x] Clean initial settings file (no dock position spam, proper template with `ensure_settings_file_exists`)
+- [x] JSONC recognition for `~/.config/aleph/*.json`
+- [x] Font size zoom keybindings (cmd+/cmd- handlers registered)
+- [x] Welcome page shown on first open (instead of empty buffer)
 - [ ] Repurpose outline panel → chapter/section/scene navigator
 - [ ] Markdown as the default/primary file type (new files open as .md)
 - [ ] Distraction-free / focus mode (minimal chrome, centered text)
+- [ ] Enable WebSearchTool with independent provider (Brave/SearXNG) — see `notes/zed-gated-features.md`
+- [ ] Enable UpdatePlanTool (remove feature flag gate)
+- [ ] Clean up default settings file (remove code-specific settings, Zed references, irrelevant options)
 - [ ] New app icon (placeholder fine initially)
 - [ ] About dialog handler (currently no-ops)
 
@@ -184,6 +194,8 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - `languages::init` still loads all language grammars, not just Markdown (Phase 2 cleanup)
 - `node_runtime` still in deps as transitive requirement of `AppState` struct (Phase 2 cleanup)
 - Some deep UI text still references "Zed" (plan chips, URLs, etc.) — cosmetic, low priority
+- JSONC trailing comma squiggles in settings file (file_types glob matches but highlighting still strict JSON in some contexts)
+- WebSearchTool and UpdatePlanTool gated behind Zed cloud/feature flags — see `notes/zed-gated-features.md`
 
 ### Unresolved Questions
 
@@ -217,3 +229,7 @@ If picking up this work in a new session, read this file first. It contains the 
 | 2026-04-29 | Separate data dir `~/Library/Application Support/Aleph/` | No shared database/recent projects with Zed |
 | 2026-04-29 | Make `ActiveCall` optional in title_bar | Use `try_global` instead of `global` — avoids requiring `call::init` |
 | 2026-04-29 | Remove Zed cloud provider + Copilot provider | Users bring their own API keys; no Zed subscription dependency |
+| 2026-04-29 | Rewrite agent system prompt for writing | Persona: developmental editor, line editor, brainstormer, researcher, continuity tracker |
+| 2026-04-29 | Remove DiagnosticsTool + TerminalTool from agent | 15 tools remain, all writing-relevant |
+| 2026-04-29 | Settings file created in main.rs | `ensure_settings_file_exists()` — not agent_ui's job |
+| 2026-04-29 | Discovered Zed-gated features | WebSearchTool + UpdatePlanTool only work with Zed cloud. Notes in `notes/zed-gated-features.md` |

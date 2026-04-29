@@ -61,6 +61,7 @@ fn main() {
     }
 
     init_paths();
+    ensure_settings_file_exists();
 
     zlog::init();
 
@@ -388,14 +389,23 @@ async fn restore_or_create_workspace(
             Default::default(),
             app_state,
             cx,
-            |workspace, window, cx| {
-                Editor::new_file(workspace, &Default::default(), window, cx);
+            |_workspace, _window, _cx| {
+                // Don't open an editor — the pane will show the welcome page
+                // automatically when it has no items.
             },
         )
     })
     .await?;
 
     Ok(())
+}
+
+fn ensure_settings_file_exists() {
+    let settings_path = paths::settings_file();
+    if !settings_path.exists() {
+        let initial_content = settings::initial_user_settings_content();
+        std::fs::write(settings_path, initial_content.as_bytes()).ok();
+    }
 }
 
 fn init_paths() {

@@ -122,7 +122,7 @@ tools! {
     CopyPathTool,
     CreateDirectoryTool,
     DeletePathTool,
-    DiagnosticsTool,
+
     EditFileTool,
     FetchTool,
     FindPathTool,
@@ -135,7 +135,7 @@ tools! {
     RestoreFileFromDiskTool,
     SaveFileTool,
     SpawnAgentTool,
-    TerminalTool,
+
     UpdatePlanTool,
     WebSearchTool,
 }

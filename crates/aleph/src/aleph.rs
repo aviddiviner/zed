@@ -52,6 +52,16 @@ pub fn init(cx: &mut App) {
     cx.on_action(|_: &ShowAll, cx| cx.unhide_other_apps());
     cx.on_action(quit);
 
+    cx.on_action(|_: &zed_actions::IncreaseBufferFontSize, cx: &mut App| {
+        theme_settings::increase_buffer_font_size(cx);
+    });
+    cx.on_action(|_: &zed_actions::DecreaseBufferFontSize, cx: &mut App| {
+        theme_settings::decrease_buffer_font_size(cx);
+    });
+    cx.on_action(|_: &zed_actions::ResetBufferFontSize, cx: &mut App| {
+        theme_settings::reset_buffer_font_size(cx);
+    });
+
     cx.on_action(|_: &zed_actions::OpenKeymapFile, cx| {
         with_active_or_new_workspace(cx, |_, window, cx| {
             open_settings_file(

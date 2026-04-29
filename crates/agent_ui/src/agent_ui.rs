@@ -502,7 +502,9 @@ pub fn init(
     maybe_backfill_editor_layout(fs, is_new_install, cx);
 }
 
-fn maybe_backfill_editor_layout(fs: Arc<dyn Fs>, is_new_install: bool, cx: &mut App) {
+fn maybe_backfill_editor_layout(_fs: Arc<dyn Fs>, _is_new_install: bool, cx: &mut App) {
+    // No-op for panel layout — Aleph's defaults already have the correct positions.
+    // Just set the KVP flag so this never runs again.
     let kvp = db::kvp::KeyValueStore::global(cx);
     let already_backfilled =
         util::ResultExt::log_err(kvp.read_kvp(PARALLEL_AGENT_LAYOUT_BACKFILL_KEY))
@@ -510,10 +512,6 @@ fn maybe_backfill_editor_layout(fs: Arc<dyn Fs>, is_new_install: bool, cx: &mut 
             .is_some();
 
     if !already_backfilled {
-        if !is_new_install {
-            AgentSettings::backfill_editor_layout(fs, cx);
-        }
-
         db::write_and_log(cx, move || async move {
             kvp.write_kvp(
                 PARALLEL_AGENT_LAYOUT_BACKFILL_KEY.to_string(),

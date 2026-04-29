@@ -39,7 +39,7 @@
     // "calt": false
   },
   // The default font size for text in the editor
-  "buffer_font_size": 18,
+  "buffer_font_size": 16,
   // The weight of the editor font in standard CSS units from 100 to 900.
   "buffer_font_weight": 400,
   // Set the buffer's line height.
@@ -69,11 +69,11 @@
   // The weight of the UI font in standard CSS units from 100 to 900.
   "ui_font_weight": 400,
   // The default font size for text in the UI
-  "ui_font_size": 16,
+  "ui_font_size": 15,
   // The default font size for agent responses in the agent panel. Falls back to the UI font size if unset.
-  "agent_ui_font_size": null,
+  "agent_ui_font_size": 15,
   // The default font size for user messages in the agent panel.
-  "agent_buffer_font_size": 12,
+  "agent_buffer_font_size": 14,
   // How much to fade out unused code.
   "unnecessary_code_fade": 0.3,
   // Active pane styling settings.
@@ -486,7 +486,7 @@
     // Whether to show the user menu in the titlebar.
     "show_user_menu": true,
     // Whether to show the sign in button in the titlebar.
-    "show_sign_in": true,
+    "show_sign_in": false,
     // Whether to show the menus in the titlebar.
     "show_menus": false,
     // The layout of window control buttons in the title bar (Linux only).
@@ -1952,8 +1952,9 @@
   "file_types": {
     "JSONC": [
       "**/.zed/*.json",
+      "**/.config/aleph/*.json",
       "**/.vscode/**/*.json",
-      "**/{zed,Zed}/{settings,keymap,tasks,debug}.json",
+      "**/{zed,Zed,aleph,Aleph}/{settings,keymap,tasks,debug}.json",
       "tsconfig*.json",
     ],
     "Markdown": [".rules", ".cursorrules", ".windsurfrules", ".clinerules"],
