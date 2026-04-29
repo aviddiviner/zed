@@ -1,11 +1,12 @@
-#!/bin/bash
-set -euo pipefail
+#!/usr/bin/env bash
 
 # Build and install Aleph Dev as a macOS .app bundle.
 #
 # Usage:
 #   script/build-aleph          # build + install to /Applications
 #   script/build-aleph --build  # build only (no bundle/install)
+
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -17,6 +18,13 @@ export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
 BUILD_ONLY=false
 if [[ "${1:-}" == "--build" ]]; then
     BUILD_ONLY=true
+fi
+
+# Zed's custom cargo-bundle fork is required (adds --select-workspace-root)
+cargo_bundle_version=$(cargo -q bundle --help 2>&1 | head -n 1 || echo "")
+if [ "$cargo_bundle_version" != "cargo-bundle v0.6.1-zed" ]; then
+    echo "==> Installing cargo-bundle (Zed fork)..."
+    cargo install cargo-bundle --git https://github.com/zed-industries/cargo-bundle.git --branch zed-deploy
 fi
 
 echo "==> Building aleph (release)..."
