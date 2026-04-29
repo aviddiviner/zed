@@ -125,7 +125,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [ ] Enable WebSearchTool with independent provider (Brave/SearXNG) — see `notes/zed-gated-features.md`
 - [ ] Enable UpdatePlanTool (remove feature flag gate)
 - [ ] Clean up default settings file (remove code-specific settings, Zed references, irrelevant options)
-- [ ] New app icon (placeholder fine initially)
+- [x] New app icon (SF Pro ℵ on Aleph Latte `#f7f4e8`, pure black `#000000`)
 - [ ] About dialog handler (currently no-ops)
 
 ### Backlog: Cleanup & Decoupling
