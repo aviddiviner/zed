@@ -13,7 +13,7 @@ struct Assets;
 
 pub struct Templates {
     handlebars: Handlebars<'static>,
-    system_prompt_override: Option<PathBuf>,
+    system_prompt_override_path: PathBuf,
 }
 
 impl Templates {
@@ -22,19 +22,10 @@ impl Templates {
         handlebars.set_strict_mode(true);
         handlebars.register_helper("contains", Box::new(contains));
         handlebars.register_embed_templates::<Assets>().unwrap();
-        let system_prompt_override = paths::config_dir().join("system_prompt.hbs");
-        let system_prompt_override = if system_prompt_override.exists() {
-            log::info!(
-                "System prompt override found at: {}",
-                system_prompt_override.display()
-            );
-            Some(system_prompt_override)
-        } else {
-            None
-        };
+        let system_prompt_override_path = paths::config_dir().join("system_prompt.hbs");
         Arc::new(Self {
             handlebars,
-            system_prompt_override,
+            system_prompt_override_path,
         })
     }
 
@@ -46,28 +37,21 @@ impl Templates {
     /// Render the system prompt, hot-reloading from the config override if it exists.
     /// Falls back to the embedded template if the override file is absent or unreadable.
     pub fn render_system_prompt<T: Serialize>(&self, data: &T) -> Result<String> {
-        if let Some(ref path) = self.system_prompt_override {
-            match std::fs::read_to_string(path) {
-                Ok(content) => {
-                    return self
-                        .handlebars
-                        .render_template(&content, data)
-                        .map_err(|err| {
-                            anyhow::anyhow!(
-                                "Failed to render system prompt override at {}: {}",
-                                path.display(),
-                                err
-                            )
-                        });
-                }
-                Err(err) => {
-                    log::warn!(
-                        "Could not read system prompt override at {}: {}. Using embedded default.",
-                        path.display(),
-                        err
-                    );
-                }
+        let path = &self.system_prompt_override_path;
+        match std::fs::read_to_string(path) {
+            Ok(content) => {
+                return self
+                    .handlebars
+                    .render_template(&content, data)
+                    .map_err(|err| {
+                        anyhow::anyhow!(
+                            "Failed to render system prompt override at {}: {}",
+                            path.display(),
+                            err
+                        )
+                    });
             }
+            Err(_) => {}
         }
         Ok(self.handlebars.render("system_prompt.hbs", data)?)
     }
