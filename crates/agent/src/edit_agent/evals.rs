@@ -1535,6 +1535,7 @@ impl EditAgentTest {
                 project: &project_context,
                 available_tools: tool_names,
                 model_name: None,
+                current_time: chrono::Local::now().format("%Y-%m-%d %H:%M %Z").to_string(),
             };
             let templates = Templates::new();
             template.render(&templates).unwrap()

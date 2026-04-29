@@ -2990,6 +2990,7 @@ impl Thread {
             project: self.project_context.read(cx),
             available_tools,
             model_name: self.model.as_ref().map(|m| m.name().0.to_string()),
+            current_time: chrono::Local::now().format("%Y-%m-%d %H:%M %Z").to_string(),
         }
         .render(&self.templates)
         .context("failed to build system prompt")

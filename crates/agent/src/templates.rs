@@ -90,6 +90,7 @@ pub struct SystemPromptTemplate<'a> {
     pub project: &'a prompt_store::ProjectContext,
     pub available_tools: Vec<SharedString>,
     pub model_name: Option<String>,
+    pub current_time: String,
 }
 
 impl Template for SystemPromptTemplate<'_> {
@@ -134,13 +135,16 @@ mod tests {
         let project = prompt_store::ProjectContext::default();
         let template = SystemPromptTemplate {
             project: &project,
-            available_tools: vec!["echo".into()],
+            available_tools: vec!["echo".into(), "update_plan".into(), "spawn_agent".into()],
             model_name: Some("test-model".to_string()),
+            current_time: "2026-04-29 21:00 CEST".to_string(),
         };
         let templates = Templates::new();
         let rendered = template.render(&templates).unwrap();
-        assert!(rendered.contains("## Fixing Diagnostics"));
-        assert!(!rendered.contains("## Planning"));
+        eprintln!("--- RENDERED SYSTEM PROMPT ---\n{}\n--- END ---", rendered);
+        assert!(rendered.contains("writing assistant"));
+        assert!(rendered.contains("## Tools"));
         assert!(rendered.contains("test-model"));
+        assert!(rendered.contains("2026-04-29 21:00 CEST"));
     }
 }
