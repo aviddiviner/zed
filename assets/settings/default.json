@@ -39,7 +39,7 @@
     // "calt": false
   },
   // The default font size for text in the editor
-  "buffer_font_size": 15,
+  "buffer_font_size": 18,
   // The weight of the editor font in standard CSS units from 100 to 900.
   "buffer_font_weight": 400,
   // Set the buffer's line height.
@@ -368,7 +368,7 @@
   // Setting this to true will show a guide at the 'preferred_line_length' value
   // if 'soft_wrap' is set to 'preferred_line_length', and will show any
   // additional guides as specified by the 'wrap_guides' setting.
-  "show_wrap_guides": true,
+  "show_wrap_guides": false,
   // Character counts at which to show wrap guides in the editor.
   "wrap_guides": [],
   // Hide the values of in variables from visual display in private files
@@ -524,7 +524,7 @@
     //    "always"
     // 4. Never show the scrollbar:
     //    "never"
-    "show": "auto",
+    "show": "never",
     // Whether to show cursor positions in the scrollbar.
     "cursors": true,
     // Whether to show git diff indicators in the scrollbar.
@@ -611,7 +611,7 @@
   "double_click_in_multibuffer": "select",
   "gutter": {
     // Whether to show line numbers in the gutter.
-    "line_numbers": true,
+    "line_numbers": false,
     // Whether to show runnables buttons in the gutter.
     "runnables": true,
     // Whether to show breakpoints in the gutter.
@@ -737,7 +737,7 @@
     // Default width of the project panel.
     "default_width": 240,
     // Where to dock the project panel. Can be 'left' or 'right'.
-    "dock": "right",
+    "dock": "left",
     // Spacing between worktree entries in the project panel. Can be 'comfortable' or 'standard'.
     "entry_spacing": "comfortable",
     // Whether to show file icons in the project panel.
@@ -854,7 +854,7 @@
     // Default width of the outline panel.
     "default_width": 300,
     // Where to dock the outline panel. Can be 'left' or 'right'.
-    "dock": "right",
+    "dock": "left",
     // Whether to show file icons in the outline panel.
     "file_icons": true,
     // Whether to show folder icons or chevrons for directories in the outline panel.
@@ -906,7 +906,7 @@
     // Whether to show the collaboration panel button in the status bar.
     "button": true,
     // Where to dock the collaboration panel. Can be 'left' or 'right'.
-    "dock": "right",
+    "dock": "left",
     // Default width of the collaboration panel.
     "default_width": 240,
   },
@@ -914,7 +914,7 @@
     // Whether to show the git panel button in the status bar.
     "button": true,
     // Where to dock the git panel. Can be 'left' or 'right'.
-    "dock": "right",
+    "dock": "left",
     // Default width of the git panel.
     "default_width": 360,
     // Style of the git status indicator in the panel.
@@ -979,13 +979,13 @@
     // Whether to show the agent panel button in the status bar.
     "button": true,
     // Where to dock the agent panel. Can be 'left', 'right' or 'bottom'.
-    "dock": "left",
+    "dock": "right",
     // Whether the agent panel should use flexible (proportional) sizing.
     //
     // Default: true
     "flexible": true,
     // Where to position the threads sidebar. Can be 'left' or 'right'.
-    "sidebar_side": "left",
+    "sidebar_side": "right",
     // Default width when the agent panel is docked to the left or right.
     "default_width": 640,
     // Default height when the agent panel is docked to the bottom.
@@ -1399,7 +1399,7 @@
   //      "soft_wrap": "preferred_line_length",
   // 4. Soft wrap lines at the preferred line length or the editor width (whichever is smaller).
   //      "soft_wrap": "bounded",
-  "soft_wrap": "none",
+  "soft_wrap": "editor_width",
   // The column at which to soft-wrap lines, for buffers where soft-wrap
   // is enabled.
   "preferred_line_length": 80,

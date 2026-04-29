@@ -295,6 +295,7 @@ fn main() {
 
         audio::init(cx);
         workspace::init(app_state.clone(), cx);
+        title_bar::init(cx);
 
         go_to_line::init(cx);
         file_finder::init(cx);
@@ -362,14 +363,6 @@ fn main() {
 
         cx.activate(true);
 
-        cx.spawn({
-            let client = app_state.client.clone();
-            async move |cx| {
-                authenticate(client, cx).await.log_err();
-            }
-        })
-        .detach();
-
         let restore_task = cx.spawn({
             let app_state = app_state.clone();
             async move |cx| {
@@ -402,13 +395,6 @@ async fn restore_or_create_workspace(
     })
     .await?;
 
-    Ok(())
-}
-
-async fn authenticate(client: Arc<Client>, cx: &AsyncApp) -> Result<()> {
-    if client.has_credentials(cx).await {
-        client.sign_in_with_optional_connect(true, cx).await?;
-    }
     Ok(())
 }
 

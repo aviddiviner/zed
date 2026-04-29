@@ -337,7 +337,7 @@ impl WelcomePage {
         let focus = self.focus_handle.clone();
         let color = cx.theme().colors();
 
-        let description = "Run multiple threads at once, mix and match any ACP-compatible agent, and keep work conflict-free with worktrees.";
+        let description = "Your AI writing partner — brainstorm, draft, edit, and research together.";
 
         v_flex()
             .w_full()
@@ -358,7 +358,7 @@ impl WelcomePage {
                             .color(Color::Muted)
                             .size(IconSize::Small),
                     )
-                    .child(Label::new("Collaborate with Agents")),
+                    .child(Label::new("Write with AI")),
             )
             .child(
                 Label::new(description)
@@ -450,9 +450,9 @@ impl Render for WelcomePage {
         };
 
         let welcome_label = if self.fallback_to_recent_projects {
-            "Welcome back to Zed"
+            "Welcome back to Aleph"
         } else {
-            "Welcome to Zed"
+            "Welcome to Aleph"
         };
 
         h_flex()
@@ -482,7 +482,7 @@ impl Render for WelcomePage {
                             .child(Vector::square(VectorName::ZedLogo, rems_from_px(45.)))
                             .child(
                                 v_flex().child(Headline::new(welcome_label)).child(
-                                    Label::new("The editor for what's next")
+                                    Label::new("Your agentic writing environment")
                                         .size(LabelSize::Small)
                                         .color(Color::Muted)
                                         .italic(),

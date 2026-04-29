@@ -1,3 +1,23 @@
+# Aleph — Agentic Writing Environment
+
+This is a fork of the Zed editor, being transformed into a creative writing tool with first-class AI agent support. The master plan lives in `ALEPH.md`.
+
+# Project principles
+
+* **Own the whole tree.** This is not a parallel build alongside Zed. We own every crate. Don't hesitate to modify any crate (agent_ui, title_bar, workspace, etc.) to remove Zed branding or code-specific features. The goal is to fully transform this into Aleph.
+* **Keep these docs fresh.** If directives in this file or `.rules` are wrong or stale, update them. Future sessions get progressively better when we refine guidance. This principle itself should never be removed.
+* **Read `ALEPH.md` first.** It contains the full plan, decisions log, current phase, and resumption context. If you're starting a new session, begin there.
+
+# Build environment
+
+* **Rust toolchain:** 1.94.1 (per `rust-toolchain.toml`)
+* **Platform:** macOS (arm64)
+* **Rustup path:** `/opt/homebrew/opt/rustup/bin`
+* **Build command:** `export PATH="/opt/homebrew/opt/rustup/bin:$PATH" && cargo build -p aleph`
+* **Check command:** `export PATH="/opt/homebrew/opt/rustup/bin:$PATH" && cargo check -p aleph`
+* **Run command:** `./target/debug/aleph`
+* **Prerequisites:** Xcode (for Metal shader compiler), cmake (for wasmtime/extensions)
+
 # Rust coding guidelines
 
 * Prioritize code correctness and clarity. Speed and efficiency are secondary priorities unless otherwise specified.
@@ -133,58 +153,28 @@ While updating an entity (`cx: Context<T>`), it can emit an event using `cx.emit
 
 Other entities can then register a callback to handle these events by doing `cx.subscribe(other_entity, |this, other_entity, event, cx| ...)`. This will return a `Subscription` which deregisters the callback when dropped.  Typically `cx.subscribe` happens when creating a new entity and the subscriptions are stored in a `_subscriptions: Vec<Subscription>` field.
 
-## Build guidelines
+## Timers in tests
 
-- Use `./script/clippy` instead of `cargo clippy`
+In GPUI tests, prefer GPUI executor timers over `smol::Timer::after(...)`:
+* Use `cx.background_executor().timer(duration).await` so work is scheduled on GPUI's dispatcher.
+* Avoid `smol::Timer::after(...)` — it may not be tracked by GPUI's scheduler, causing "nothing left to run" issues with `run_until_parked()`.
 
-# Pull request hygiene
+# Key crates for Aleph
 
-When an agent opens or updates a pull request, it must:
+| Crate | Role |
+|-------|------|
+| `crates/aleph` | Main binary entry point |
+| `crates/editor` | Text editing surface |
+| `crates/workspace` | Window/pane/panel management |
+| `crates/agent` | AI agent orchestration |
+| `crates/agent_ui` | Agent panel UI |
+| `crates/language_model` | LLM abstraction |
+| `crates/markdown` | Markdown rendering |
+| `crates/gpui` | UI framework |
+| `crates/project_panel` | File tree |
+| `crates/outline_panel` | Document structure navigation |
+| `crates/git_ui` | Git integration UI |
 
-- Use a clear, correctly capitalized, imperative PR title (for example, `Fix crash in project panel`).
-- Avoid conventional commit prefixes in PR titles (`fix:`, `feat:`, `docs:`, etc.).
-- Avoid trailing punctuation in PR titles.
-- Optionally prefix the title with a crate name when one crate is the clear scope (for example, `git_ui: Add history view`).
-- Include a `Release Notes:` section as the final section in the PR body.
-- Use one bullet under `Release Notes:`:
-  - `- Added ...`, `- Fixed ...`, or `- Improved ...` for user-facing changes, or
-  - `- N/A` for docs-only and other non-user-facing changes.
-- Format release notes exactly with a blank line after the heading, for example:
+# Config
 
-```
-Release Notes:
-
-- N/A
-```
-
-# Crash Investigation
-
-## Sentry Integration
-- Crash investigation prompts: `.factory/prompts/crash/investigate.md`
-- Crash fix prompts: `.factory/prompts/crash/fix.md`
-- Fetch crash reports: `script/sentry-fetch <issue-id>`
-- Generate investigation prompt from crash: `script/crash-to-prompt <issue-id>`
-
-# Rules Hygiene
-
-These `.rules` files are read by every agent session. Keep them high-signal.
-
-## After any agentic session
-If you discover a non-obvious pattern that would help future sessions, include a **"Suggested .rules additions"** heading in your PR description with the proposed text. Do **not** edit `.rules` inline during normal feature/fix work. Reviewers decide what gets merged.
-
-## High bar for new rules
-Editing or clarifying existing rules is always welcome. New rules must meet **all three** criteria:
-1. **Non-obvious** — someone familiar with the codebase would still get it wrong without the rule.
-2. **Repeatedly encountered** — it came up more than once (multiple hits in one session counts).
-3. **Specific enough to act on** — a concrete instruction, not a vague principle.
-
-Rules that apply to a single crate belong in that crate's own `.rules` file, not the repo root.
-
-## What NOT to put in `.rules`
-Avoid architectural descriptions of a crate (module layout, data flow, key types). These go stale fast and the agent can gather them by reading the code. Rules should be **traps to avoid**, not **maps to follow**.
-
-## No drive-by additions
-Rules emerge from validated patterns, not one-off observations. The workflow is:
-1. Agent notes a pattern during a session.
-2. Team validates the pattern in code review.
-3. A dedicated commit adds the rule with context on *why* it exists.
+Aleph uses `~/.config/aleph/` for its configuration (separate from Zed's `~/.config/zed/`).

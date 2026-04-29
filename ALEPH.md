@@ -28,33 +28,33 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 
 ## Phases
 
-### Phase 1A: Fork & Strip ← CURRENT
+### Phase 1A: Fork & Strip ✅ COMPLETE
 
 **Goal:** A building, running app with code-specific features removed.
 
 #### Steps:
 
-- [ ] Create `crates/aleph` binary crate (fork of `crates/zed`)
-- [ ] Strip dependencies from `aleph/Cargo.toml`:
-  - [x] Identify removals (see Removal List below)
-- [ ] Strip initialization code in `main.rs` — don't init removed features
-- [ ] Strip `languages` init down to Markdown only
-- [ ] Confirm it builds and opens a window with: editor + file tree + agent panel
-- [ ] Update workspace Cargo.toml to include `crates/aleph`
+- [x] Create `crates/aleph` binary crate (fork of `crates/zed`)
+- [x] Strip dependencies from `aleph/Cargo.toml`
+- [x] Strip initialization code in `main.rs` — don't init removed features
+- [x] Update workspace Cargo.toml to include `crates/aleph`
+- [x] Fix keymap loading to gracefully skip unknown actions (`load_asset_allow_partial_failure`)
+- [x] Add `RefreshLlmTokenListener::register` for LLM infrastructure
+- [x] Confirm it builds and opens a window with: editor + file tree + agent panel
 
 #### Removal List (confirmed by human review):
 
 | Group | Crates | Status |
 |-------|--------|--------|
-| Debugger & Tasks | `dap`, `dap_adapters`, `debugger_ui`, `debugger_tools`, `debug_adapter_extension`, `task`, `tasks_ui`, `toolchain_selector` | Approved ✅ |
-| Code Completion | `copilot`, `copilot_chat`, `copilot_ui`, `edit_prediction`, `edit_prediction_cli`, `edit_prediction_context`, `edit_prediction_metrics`, `edit_prediction_types`, `edit_prediction_ui` | Approved ✅ |
-| Terminal & REPL | `terminal`, `terminal_view`, `repl` | Approved ✅ |
-| Collaboration | `collab`, `collab_ui`, `call`, `channel`, `livekit_api`, `livekit_client`, `remote`, `remote_connection`, `remote_server` | Approved ✅ |
-| Code Formatting | `prettier`, `snippet`, `snippet_provider`, `snippets_ui` | Approved ✅ |
-| Vim | `vim`, `vim_mode_setting` | Approved ✅ |
-| Auto-Update & Telemetry | `auto_update`, `auto_update_helper`, `auto_update_ui`, `telemetry`, `telemetry_events` | Approved ✅ |
-| Misc Code-Specific | `diagnostics`, `node_runtime`, `dev_container`, `breadcrumbs`, `csv_preview`, `svg_preview` | Approved ✅ |
-| LSP UI (panels only) | `language_tools`, `language_selector`, `language_onboarding` | Approved ✅ |
+| Debugger & Tasks | `dap`, `dap_adapters`, `debugger_ui`, `debugger_tools`, `debug_adapter_extension`, `task`, `tasks_ui`, `toolchain_selector` | Removed from init ✅ |
+| Code Completion | `copilot`, `copilot_chat`, `copilot_ui`, `edit_prediction`, `edit_prediction_cli`, `edit_prediction_context`, `edit_prediction_metrics`, `edit_prediction_types`, `edit_prediction_ui` | Removed from init ✅ |
+| Terminal & REPL | `terminal`, `terminal_view`, `repl` | Removed from init ✅ |
+| Collaboration | `collab`, `collab_ui`, `call`, `channel`, `livekit_api`, `livekit_client`, `remote`, `remote_connection`, `remote_server` | Removed from init ✅ |
+| Code Formatting | `prettier`, `snippet`, `snippet_provider`, `snippets_ui` | Removed from init ✅ |
+| Vim | `vim`, `vim_mode_setting` | Removed from init ✅ |
+| Auto-Update & Telemetry | `auto_update`, `auto_update_helper`, `auto_update_ui`, `telemetry`, `telemetry_events` | Removed from init ✅ |
+| Misc Code-Specific | `diagnostics`, `node_runtime`, `dev_container`, `breadcrumbs`, `csv_preview`, `svg_preview` | Removed from init ✅ |
+| LSP UI (panels only) | `language_tools`, `language_selector`, `language_onboarding` | Removed from init ✅ |
 
 #### Keeping (but not using LSP features at runtime):
 
@@ -62,7 +62,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 |-------|--------|
 | `language` | Provides tree-sitter syntax highlighting, outline, auto-indent — needed for Markdown |
 | `lsp` | Dependency of `language` — remove later in Phase 2 |
-| `languages` | Strip to Markdown-only init |
+| `languages` | Strip to Markdown-only init (TODO) |
 | `grammars` | Markdown grammar needed |
 
 #### Explicitly Keeping:
@@ -84,29 +84,45 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 
 ---
 
-### Phase 1B: Identity & Cosmetics
+### Phase 1B: Identity & Cosmetics ✅ COMPLETE
 
 **Goal:** It looks and feels like Aleph, not Zed.
 
-- [ ] Rename app to "Aleph" in bundle metadata
-- [ ] Update app menus (remove code-specific menu items)
-- [ ] New app icon (placeholder fine initially)
-- [ ] Strip code-specific toolbar items (LSP status, diagnostics count, etc.)
-- [ ] Default panel layout: file tree left, agent right, editor center
+- [x] Remove auto-authenticate on startup (no more keychain prompt for zed.dev)
+- [x] Update app menus (code items removed, writer-friendly labels, says "Aleph")
+- [x] Strip code-specific toolbar items from status bar
+- [x] Rename "Zed Agent" → "Aleph" in agent panel, onboarding, conversation placeholder
+- [x] Separate config directory (`~/.config/aleph/` instead of `~/.config/zed/`)
+- [x] Separate data directory (`~/Library/Application Support/Aleph/` instead of Zed's)
+- [x] Default panel layout: project/outline/git left, agent + threads sidebar right
+- [x] Remove Zed cloud LLM provider (users bring their own API keys)
+- [x] Remove AI onboarding upsell banner
+- [x] Rebrand welcome page ("Welcome to Aleph", "Your agentic writing environment")
+- [x] Add title_bar::init for proper titlebar rendering
+- [x] Make title_bar work without `call` crate (ActiveCall now optional via try_global)
 
 ---
 
-### Phase 2: Writer-Friendly Defaults
+### Phase 2: Writer-Friendly Defaults ← CURRENT
 
 **Goal:** The editor feels like a writing tool out of the box.
 
-- [ ] Default settings for writing: word wrap on, larger font size, serif font option
+- [x] Default settings for writing: soft wrap, 18px font, comfortable line height, no line numbers, no scrollbar, no wrap guides
+- [x] Defaults changed at source (`assets/settings/default.json`, `crates/paths`) — no workaround layers
 - [ ] Repurpose outline panel → chapter/section/scene navigator
-- [ ] Markdown as the default/primary file type
-- [ ] Agent panel front-and-center in default layout
+- [ ] Markdown as the default/primary file type (new files open as .md)
+- [ ] Distraction-free / focus mode (minimal chrome, centered text)
+- [ ] New app icon (placeholder fine initially)
+- [ ] About dialog handler (currently no-ops)
+
+### Backlog: Cleanup & Decoupling
+
+**Goal:** Remove dead weight from the dependency tree. Not blocking, but nice to have.
+
+- [ ] Strip `languages` init to Markdown-only
 - [ ] Make `lsp` an optional dependency in `language` crate (decouple cleanly)
 - [ ] Remove `task` dependency from `language` crate
-- [ ] Distraction-free / focus mode (minimal chrome, centered text)
+- [ ] Remove `node_runtime` from `AppState` (transitive requirement currently)
 
 ---
 
@@ -149,17 +165,33 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - **Rustup path:** `/opt/homebrew/opt/rustup/bin`
 - **Build command:** `export PATH="/opt/homebrew/opt/rustup/bin:$PATH" && cargo build -p aleph`
 - **Check command:** `export PATH="/opt/homebrew/opt/rustup/bin:$PATH" && cargo check -p aleph`
+- **Run command:** `./target/debug/aleph`
+- **Prerequisites:** Xcode (for Metal shader compiler), cmake (for wasmtime/extensions)
 
 ### Key Files
 
 - `crates/aleph/` — Main binary crate (our entry point)
 - `crates/aleph/src/main.rs` — Application entry point
+- `crates/aleph/src/aleph.rs` — App module (workspace init, menus, keymaps, panels)
 - `crates/aleph/Cargo.toml` — Dependencies (stripped-down version of `crates/zed/Cargo.toml`)
+- `assets/settings/default.json` — Default settings (modified at source for writer-friendly defaults)
+- `crates/paths/src/paths.rs` — Config/data directory paths (changed to "aleph")
 - `ALEPH.md` — This file (master plan)
+
+### Known Issues
+
+- Default keymap has bindings for removed features (gracefully skipped, not user-visible)
+- `languages::init` still loads all language grammars, not just Markdown (Phase 2 cleanup)
+- `node_runtime` still in deps as transitive requirement of `AppState` struct (Phase 2 cleanup)
+- Some deep UI text still references "Zed" (plan chips, URLs, etc.) — cosmetic, low priority
+
+### Unresolved Questions
+
+- **Window controls appear ~20% larger than Zed's** when running as bare binary. Likely a macOS quirk with unbundled executables (no `.app` bundle / Info.plist). Should resolve once we package as a proper app bundle. Not a code issue — the `rem_size`, `ui_font_size`, and `traffic_light_position` values are all identical to Zed's.
 
 ### Resumption Context
 
-If picking up this work in a new session, read this file first. It contains the full plan, decisions made, and current progress. Check the Phase 1A checkboxes to see what's been completed.
+If picking up this work in a new session, read this file first. It contains the full plan, decisions made, and current progress. The app builds and runs — start from Phase 2 tasks.
 
 ---
 
@@ -167,14 +199,21 @@ If picking up this work in a new session, read this file first. It contains the 
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
-| 2025-01-XX | Name: "Aleph" | First letter, infinite cardinality, the beginning |
-| 2025-01-XX | Keep Git | Commits as save points, diffs for revision tracking, branches for alternate storylines |
-| 2025-01-XX | Keep `language` crate | Needed for tree-sitter Markdown highlighting and outline |
-| 2025-01-XX | Keep encoding/line-ending selectors | Useful for international text and cross-platform manuscripts |
-| 2025-01-XX | Keep journal | Daily writing notes — on brand |
-| 2025-01-XX | Keep audio | Future ambient sounds / TTS |
-| 2025-01-XX | Keep extension system | Future writing plugins |
-| 2025-01-XX | Remove vim | No modal editing needed |
-| 2025-01-XX | Remove terminal | Not a code execution environment |
-| 2025-01-XX | Remove collab/calls | Too complex, tied to Zed servers |
-| 2025-01-XX | Strategy: new binary, don't delete workspace crates | Avoids cascading Cargo dependency hell |
+| 2026-04-29 | Name: "Aleph" | First letter, infinite cardinality, the beginning |
+| 2026-04-29 | Keep Git | Commits as save points, diffs for revision tracking, branches for alternate storylines |
+| 2026-04-29 | Keep `language` crate | Needed for tree-sitter Markdown highlighting and outline |
+| 2026-04-29 | Keep encoding/line-ending selectors | Useful for international text and cross-platform manuscripts |
+| 2026-04-29 | Keep journal | Daily writing notes — on brand |
+| 2026-04-29 | Keep audio | Future ambient sounds / TTS |
+| 2026-04-29 | Keep extension system | Future writing plugins |
+| 2026-04-29 | Remove vim | No modal editing needed |
+| 2026-04-29 | Remove terminal | Not a code execution environment |
+| 2026-04-29 | Remove collab/calls | Too complex, tied to Zed servers |
+| 2026-04-29 | Own the whole tree | Not a parallel build — modify any crate freely to remove Zed branding |
+| 2026-04-29 | Change defaults at source | Don't add workaround layers in aleph crate; modify `assets/`, `crates/paths/`, etc. directly |
+| 2026-04-29 | Use `load_asset_allow_partial_failure` for keymaps | Gracefully skip bindings for unregistered actions |
+| 2026-04-29 | Base on stable release v0.233.10 | Known-good build baseline, branch: `aleph` |
+| 2026-04-29 | Separate config dir `~/.config/aleph/` | Clean slate, no Zed settings interference |
+| 2026-04-29 | Separate data dir `~/Library/Application Support/Aleph/` | No shared database/recent projects with Zed |
+| 2026-04-29 | Make `ActiveCall` optional in title_bar | Use `try_global` instead of `global` — avoids requiring `call::init` |
+| 2026-04-29 | Remove Zed cloud provider + Copilot provider | Users bring their own API keys; no Zed subscription dependency |
