@@ -1,16 +1,14 @@
 use crate::{
     ContextServerRegistry, CopyPathTool, CreateDirectoryTool, DbLanguageModel, DbThread,
-    DeletePathTool, EditFileTool, FetchTool, FindPathTool, GrepTool,
-    ListDirectoryTool, MovePathTool, NowTool, OpenTool, ProjectSnapshot, ReadFileTool,
-    RestoreFileFromDiskTool, SaveFileTool, SpawnAgentTool, StreamingEditFileTool,
-    SystemPromptTemplate, Template, Templates, TerminalTool, ToolPermissionDecision,
-    UpdatePlanTool, WebSearchTool, decide_permission_from_settings,
+    DeletePathTool, EditFileTool, FetchTool, FindPathTool, GrepTool, ListDirectoryTool,
+    MovePathTool, NowTool, OpenTool, ProjectSnapshot, ReadFileTool, RestoreFileFromDiskTool,
+    SaveFileTool, SpawnAgentTool, StreamingEditFileTool, SystemPromptTemplate, Template, Templates,
+    TerminalTool, ToolPermissionDecision, UpdatePlanTool, WebSearchTool,
+    decide_permission_from_settings,
 };
 use acp_thread::{MentionUri, UserMessageId};
 use action_log::ActionLog;
-use feature_flags::{
-    FeatureFlagAppExt as _, StreamingEditFileToolFeatureFlag, UpdatePlanToolFeatureFlag,
-};
+use feature_flags::{FeatureFlagAppExt as _, StreamingEditFileToolFeatureFlag};
 
 use agent_client_protocol as acp;
 use agent_settings::{
@@ -1560,9 +1558,7 @@ impl Thread {
         self.add_tool(MovePathTool::new(self.project.clone()));
         self.add_tool(NowTool);
         self.add_tool(OpenTool::new(self.project.clone()));
-        if cx.has_flag::<UpdatePlanToolFeatureFlag>() {
-            self.add_tool(UpdatePlanTool);
-        }
+        self.add_tool(UpdatePlanTool);
         self.add_tool(ReadFileTool::new(
             self.project.clone(),
             self.action_log.clone(),
