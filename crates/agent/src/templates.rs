@@ -3,6 +3,7 @@ use gpui::SharedString;
 use handlebars::Handlebars;
 use rust_embed::RustEmbed;
 use serde::Serialize;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(RustEmbed)]
@@ -10,7 +11,10 @@ use std::sync::Arc;
 #[include = "*.hbs"]
 struct Assets;
 
-pub struct Templates(Handlebars<'static>);
+pub struct Templates {
+    handlebars: Handlebars<'static>,
+    system_prompt_override: Option<PathBuf>,
+}
 
 impl Templates {
     pub fn new() -> Arc<Self> {
@@ -18,7 +22,54 @@ impl Templates {
         handlebars.set_strict_mode(true);
         handlebars.register_helper("contains", Box::new(contains));
         handlebars.register_embed_templates::<Assets>().unwrap();
-        Arc::new(Self(handlebars))
+        let system_prompt_override = paths::config_dir().join("system_prompt.hbs");
+        let system_prompt_override = if system_prompt_override.exists() {
+            log::info!(
+                "System prompt override found at: {}",
+                system_prompt_override.display()
+            );
+            Some(system_prompt_override)
+        } else {
+            None
+        };
+        Arc::new(Self {
+            handlebars,
+            system_prompt_override,
+        })
+    }
+
+    /// Render a template by name using the embedded (compiled-in) templates.
+    pub fn render_embedded<T: Serialize>(&self, template_name: &str, data: &T) -> Result<String> {
+        Ok(self.handlebars.render(template_name, data)?)
+    }
+
+    /// Render the system prompt, hot-reloading from the config override if it exists.
+    /// Falls back to the embedded template if the override file is absent or unreadable.
+    pub fn render_system_prompt<T: Serialize>(&self, data: &T) -> Result<String> {
+        if let Some(ref path) = self.system_prompt_override {
+            match std::fs::read_to_string(path) {
+                Ok(content) => {
+                    return self
+                        .handlebars
+                        .render_template(&content, data)
+                        .map_err(|err| {
+                            anyhow::anyhow!(
+                                "Failed to render system prompt override at {}: {}",
+                                path.display(),
+                                err
+                            )
+                        });
+                }
+                Err(err) => {
+                    log::warn!(
+                        "Could not read system prompt override at {}: {}. Using embedded default.",
+                        path.display(),
+                        err
+                    );
+                }
+            }
+        }
+        Ok(self.handlebars.render("system_prompt.hbs", data)?)
     }
 }
 
@@ -29,7 +80,7 @@ pub trait Template: Sized {
     where
         Self: Serialize + Sized,
     {
-        Ok(templates.0.render(Self::TEMPLATE_NAME, self)?)
+        templates.render_embedded(Self::TEMPLATE_NAME, self)
     }
 }
 
@@ -43,6 +94,10 @@ pub struct SystemPromptTemplate<'a> {
 
 impl Template for SystemPromptTemplate<'_> {
     const TEMPLATE_NAME: &'static str = "system_prompt.hbs";
+
+    fn render(&self, templates: &Templates) -> Result<String> {
+        templates.render_system_prompt(self)
+    }
 }
 
 /// Handlebars helper for checking if an item is in a list

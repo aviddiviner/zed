@@ -119,6 +119,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [x] User theme loading from `~/.config/aleph/themes/` (with hot-reload on file change)
 - [x] Bundle "Aleph Latte" theme into `assets/themes/` as the built-in default
 - [x] Set "Aleph Latte" as the default theme in `assets/settings/default.json`
+- [x] Configurable system prompt: `~/.config/aleph/system_prompt.hbs` overrides embedded default (hot-reload on every request)
 - [ ] Repurpose outline panel → chapter/section/scene navigator
 - [ ] Markdown as the default/primary file type (new files open as .md)
 - [ ] Distraction-free / focus mode (minimal chrome, centered text)
@@ -149,10 +150,11 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
   - World-building tool (locations, rules, lore)
   - Continuity checker (agent scans for contradictions)
 - [ ] **Writing-focused agent prompts/personas:**
-  - Developmental editor persona
-  - Line editor persona
-  - Research assistant persona
-  - Brainstorming partner persona
+  - `~/.config/aleph/personas/` directory with plain-text persona files
+  - Profile `persona` field references a file by name
+  - System prompt template includes `{{{persona}}}` variable
+  - Ship built-in personas: developmental editor, line editor, research assistant, brainstormer
+  - UI: profile/persona switcher dropdown in agent panel
 - [ ] **Word count & progress tracking:**
   - Session word count
   - Daily/weekly targets
@@ -189,6 +191,8 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - `crates/aleph/Cargo.toml` — Dependencies (stripped-down version of `crates/zed/Cargo.toml`)
 - `assets/settings/default.json` — Default settings (modified at source for writer-friendly defaults)
 - `crates/paths/src/paths.rs` — Config/data directory paths (changed to "aleph")
+- `crates/agent/src/templates.rs` — System prompt template loading (supports config override)
+- `~/.config/aleph/system_prompt.hbs` — User-overridable system prompt template (hot-reloaded)
 - `ALEPH.md` — This file (master plan)
 
 ### Known Issues
@@ -236,3 +240,4 @@ If picking up this work in a new session, read this file first. It contains the 
 | 2026-04-29 | Remove DiagnosticsTool + TerminalTool from agent | 15 tools remain, all writing-relevant |
 | 2026-04-29 | Settings file created in main.rs | `ensure_settings_file_exists()` — not agent_ui's job |
 | 2026-04-29 | Discovered Zed-gated features | WebSearchTool + UpdatePlanTool only work with Zed cloud. Notes in `notes/zed-gated-features.md` |
+| 2026-04-29 | Configurable system prompt via `~/.config/aleph/system_prompt.hbs` | Hot-reload on every request; full Handlebars template override; future personas layer on top |
