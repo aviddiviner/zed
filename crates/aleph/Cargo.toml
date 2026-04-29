@@ -1,0 +1,177 @@
+[package]
+description = "An agentic writing environment."
+edition.workspace = true
+name = "aleph"
+version = "0.1.0"
+publish.workspace = true
+license = "GPL-3.0-or-later"
+authors = ["Aleph Contributors"]
+
+[lints]
+workspace = true
+
+[features]
+test-support = [
+    "gpui/test-support",
+    "gpui_platform/screen-capture",
+    "dep:image",
+    "workspace/test-support",
+    "project/test-support",
+    "editor/test-support",
+]
+
+[[bin]]
+name = "aleph"
+path = "src/main.rs"
+
+[dependencies]
+# Core UI framework
+gpui.workspace = true
+gpui_platform = { workspace = true, features = ["screen-capture", "font-kit", "wayland", "x11"] }
+gpui_tokio.workspace = true
+ui.workspace = true
+component.workspace = true
+
+# Workspace & Editor
+workspace.workspace = true
+editor.workspace = true
+multi_buffer.workspace = true
+sidebar.workspace = true
+panel.workspace = true
+breadcrumbs.workspace = true
+
+# Agent / AI
+agent.workspace = true
+agent_settings.workspace = true
+agent_ui.workspace = true
+acp_tools.workspace = true
+acp_thread.workspace = true
+language_model.workspace = true
+language_models.workspace = true
+prompt_store.workspace = true
+context_server.workspace = true
+
+# Language & Syntax (for Markdown highlighting)
+language.workspace = true
+languages = { workspace = true, features = ["load-grammars"] }
+
+# Markdown
+markdown.workspace = true
+markdown_preview.workspace = true
+
+# File management
+project.workspace = true
+project_panel.workspace = true
+file_finder.workspace = true
+fs.workspace = true
+worktree.workspace = true
+
+# Git
+git.workspace = true
+git_ui.workspace = true
+git_graph.workspace = true
+git_hosting_providers.workspace = true
+
+# Search & Navigation
+search.workspace = true
+outline.workspace = true
+outline_panel.workspace = true
+command_palette.workspace = true
+command_palette_hooks.workspace = true
+go_to_line.workspace = true
+file_icons.workspace = true
+
+# Settings & Theme
+settings.workspace = true
+settings_ui.workspace = true
+theme.workspace = true
+theme_settings.workspace = true
+theme_extension.workspace = true
+theme_selector.workspace = true
+
+# Utilities
+assets.workspace = true
+audio.workspace = true
+client.workspace = true
+node_runtime.workspace = true
+reqwest_client.workspace = true
+cli.workspace = true
+clock.workspace = true
+collections.workspace = true
+db.workspace = true
+encoding_selector.workspace = true
+feature_flags.workspace = true
+feedback.workspace = true
+http_client.workspace = true
+image_viewer.workspace = true
+journal.workspace = true
+line_ending_selector.workspace = true
+menu.workspace = true
+notifications.workspace = true
+paths.workspace = true
+picker.workspace = true
+proto.workspace = true
+recent_projects.workspace = true
+release_channel.workspace = true
+rope.workspace = true
+session.workspace = true
+system_specs.workspace = true
+tab_switcher.workspace = true
+time_format.workspace = true
+title_bar.workspace = true
+util.workspace = true
+watch.workspace = true
+zed_actions.workspace = true
+zlog.workspace = true
+zlog_settings.workspace = true
+ztracing.workspace = true
+
+# Extensions
+extension.workspace = true
+extension_host.workspace = true
+extensions_ui.workspace = true
+
+# Third-party
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+futures.workspace = true
+image = { workspace = true, optional = true }
+log.workspace = true
+parking_lot.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shellexpand.workspace = true
+smol.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
+gpui = { workspace = true, features = [
+    "wayland",
+    "x11",
+] }
+ashpd.workspace = true
+image.workspace = true
+
+[dev-dependencies]
+editor = { workspace = true, features = ["test-support"] }
+gpui = { workspace = true, features = ["test-support"] }
+language = { workspace = true, features = ["test-support"] }
+project = { workspace = true, features = ["test-support"] }
+workspace = { workspace = true, features = ["test-support"] }
+
+[package.metadata.bundle-dev]
+icon = ["resources/app-icon-dev@2x.png", "resources/app-icon-dev.png"]
+identifier = "dev.aleph.Aleph-Dev"
+name = "Aleph Dev"
+osx_minimum_system_version = "10.15.7"
+
+[package.metadata.bundle-stable]
+icon = ["resources/app-icon@2x.png", "resources/app-icon.png"]
+identifier = "dev.aleph.Aleph"
+name = "Aleph"
+osx_minimum_system_version = "10.15.7"
