@@ -5,7 +5,7 @@ use futures::StreamExt;
 use clap::Parser;
 use client::{Client, ProxySettings, RefreshLlmTokenListener, UserStore};
 use db::kvp::KeyValueStore;
-use editor::Editor;
+
 use extension::ExtensionHostProxy;
 use fs::{Fs, RealFs};
 use git::GitHostingProviderRegistry;
