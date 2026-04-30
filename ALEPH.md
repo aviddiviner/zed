@@ -127,6 +127,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [x] Enable UpdatePlanTool (remove feature flag gate)
 - [ ] Clean up default settings file (remove code-specific settings, Zed references, irrelevant options)
 - [x] New app icon (SF Pro ℵ on Aleph Latte `#f7f4e8`, pure black `#000000`)
+- [x] Agent icon: replaced `zed_agent.svg` with geometric aleph letterform
 - [ ] About dialog handler (currently no-ops)
 
 ### Backlog: Cleanup & Decoupling
@@ -137,6 +138,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [ ] Make `lsp` an optional dependency in `language` crate (decouple cleanly)
 - [ ] Remove `task` dependency from `language` crate
 - [ ] Remove `node_runtime` from `AppState` (transitive requirement currently)
+- [ ] Rename `IconName::ZedAgent` → `AlephAgent`, rename SVG file to `aleph_agent.svg`, update all references (~5 locations)
 
 ---
 
