@@ -750,7 +750,11 @@ pub async fn fetch_auth_server_metadata(
         match fetch_json::<AuthServerMetadataResponse>(http_client, url).await {
             Ok(response) => {
                 let reported_issuer = response.issuer.unwrap_or_else(|| issuer.clone());
-                if reported_issuer != *issuer {
+                let reported_trimmed = reported_issuer.as_str().trim_end_matches('/');
+                let expected_trimmed = issuer.as_str().trim_end_matches('/');
+                if reported_issuer.origin() != issuer.origin()
+                    || !expected_trimmed.starts_with(reported_trimmed)
+                {
                     bail!(
                         "Auth server metadata issuer mismatch: expected {}, got {}",
                         issuer,
@@ -2196,6 +2200,83 @@ mod tests {
             assert!(
                 err_msg.contains("issuer mismatch"),
                 "unexpected error: {}",
+                err_msg
+            );
+        });
+    }
+
+    #[test]
+    fn test_fetch_auth_server_metadata_accepts_parent_path_issuer() {
+        smol::block_on(async {
+            let client = make_fake_http_client(|req| {
+                Box::pin(async move {
+                    let uri = req.uri().to_string();
+                    if uri.contains(".well-known/oauth-authorization-server")
+                        || uri.contains(".well-known/openid-configuration")
+                    {
+                        json_response(
+                            200,
+                            r#"{
+                                "issuer": "https://auth.example.com/",
+                                "authorization_endpoint": "https://auth.example.com/authorize",
+                                "token_endpoint": "https://auth.example.com/token",
+                                "code_challenge_methods_supported": ["S256"]
+                            }"#,
+                        )
+                    } else {
+                        json_response(404, "{}")
+                    }
+                })
+            });
+
+            let issuer = Url::parse("https://auth.example.com/tenant123").unwrap();
+            let result = fetch_auth_server_metadata(&client, &issuer).await;
+
+            assert!(
+                result.is_ok(),
+                "should accept parent-path issuer from same origin: {:?}",
+                result.unwrap_err()
+            );
+            let metadata = result.unwrap();
+            assert_eq!(
+                metadata.authorization_endpoint.as_str(),
+                "https://auth.example.com/authorize"
+            );
+        });
+    }
+
+    #[test]
+    fn test_fetch_auth_server_metadata_rejects_sibling_path_issuer() {
+        smol::block_on(async {
+            let client = make_fake_http_client(|req| {
+                Box::pin(async move {
+                    let uri = req.uri().to_string();
+                    if uri.contains(".well-known/oauth-authorization-server")
+                        || uri.contains(".well-known/openid-configuration")
+                    {
+                        json_response(
+                            200,
+                            r#"{
+                                "issuer": "https://auth.example.com/other-tenant",
+                                "authorization_endpoint": "https://auth.example.com/authorize",
+                                "token_endpoint": "https://auth.example.com/token",
+                                "code_challenge_methods_supported": ["S256"]
+                            }"#,
+                        )
+                    } else {
+                        json_response(404, "{}")
+                    }
+                })
+            });
+
+            let issuer = Url::parse("https://auth.example.com/tenant123").unwrap();
+            let result = fetch_auth_server_metadata(&client, &issuer).await;
+
+            assert!(result.is_err());
+            let err_msg = result.unwrap_err().to_string();
+            assert!(
+                err_msg.contains("issuer mismatch"),
+                "should reject sibling-path issuer: {}",
                 err_msg
             );
         });
