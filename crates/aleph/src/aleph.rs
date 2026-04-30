@@ -23,24 +23,21 @@ use std::{future::Future, path::PathBuf, sync::Arc};
 use theme::ActiveTheme;
 use util::{ResultExt, asset_str};
 use uuid::Uuid;
+use workspace::Pane;
 use workspace::{
     AppState, CloseIntent, CloseWindow, MultiWorkspace, NewFile, NewWindow, Panel, Workspace,
     WorkspaceSettings, with_active_or_new_workspace,
 };
-use workspace::Pane;
 use zed_actions::{About, OpenSettingsFile, Quit};
+
+mod writing_toolbar;
+use writing_toolbar::WritingToolbar;
 
 use fs::Fs;
 
 actions!(
     aleph,
-    [
-        Hide,
-        HideOthers,
-        ShowAll,
-        OpenDefaultSettings,
-        OpenLog,
-    ]
+    [Hide, HideOthers, ShowAll, OpenDefaultSettings, OpenLog,]
 );
 
 pub fn init(cx: &mut App) {
@@ -132,11 +129,9 @@ fn quit(_: &Quit, cx: &mut App) {
         for window in &workspaces {
             if let Some(should_close) = window
                 .update(cx, |multi_workspace, window, cx| {
-                    multi_workspace
-                        .workspace()
-                        .update(cx, |workspace, cx| {
-                            workspace.prepare_to_close(CloseIntent::Quit, window, cx)
-                        })
+                    multi_workspace.workspace().update(cx, |workspace, cx| {
+                        workspace.prepare_to_close(CloseIntent::Quit, window, cx)
+                    })
                 })
                 .log_err()
             {
@@ -341,10 +336,7 @@ fn bind_on_window_closed(cx: &mut App) -> Option<gpui::Subscription> {
     }
 }
 
-fn initialize_panels(
-    window: &mut Window,
-    cx: &mut Context<Workspace>,
-) -> Task<anyhow::Result<()>> {
+fn initialize_panels(window: &mut Window, cx: &mut Context<Workspace>) -> Task<anyhow::Result<()>> {
     cx.spawn_in(window, async move |workspace_handle, cx| {
         let project_panel = ProjectPanel::load(workspace_handle.clone(), cx.clone());
         let outline_panel = OutlinePanel::load(workspace_handle.clone(), cx.clone());
@@ -380,10 +372,10 @@ fn setup_or_teardown_ai_panel<P: Panel>(
     window: &mut Window,
     cx: &mut Context<Workspace>,
     load_panel: impl FnOnce(
-            WeakEntity<Workspace>,
-            AsyncWindowContext,
-        ) -> Task<anyhow::Result<Entity<P>>>
-        + 'static,
+        WeakEntity<Workspace>,
+        AsyncWindowContext,
+    ) -> Task<anyhow::Result<Entity<P>>>
+    + 'static,
 ) -> Task<anyhow::Result<()>> {
     let disable_ai = SettingsStore::global(cx)
         .get::<DisableAiSettings>(None)
@@ -468,7 +460,7 @@ async fn initialize_agent_panel(
 }
 
 fn initialize_pane(
-    _workspace: &mut Workspace,
+    workspace: &Workspace,
     pane: &Entity<Pane>,
     window: &mut Window,
     cx: &mut Context<Workspace>,
@@ -477,6 +469,9 @@ fn initialize_pane(
         pane.toolbar().update(cx, |toolbar, cx| {
             let breadcrumbs = cx.new(|_| breadcrumbs::Breadcrumbs::new());
             toolbar.add_item(breadcrumbs, window, cx);
+
+            let writing_toolbar = cx.new(|_| WritingToolbar::new(workspace));
+            toolbar.add_item(writing_toolbar, window, cx);
 
             let project_search_bar = cx.new(|_| ProjectSearchBar::new());
             toolbar.add_item(project_search_bar, window, cx);
@@ -644,10 +639,7 @@ pub fn app_menus(_cx: &mut App) -> Vec<Menu> {
                 MenuItem::action("Command Palette...", zed_actions::command_palette::Toggle),
                 MenuItem::separator(),
                 MenuItem::action("Go to File...", workspace::ToggleFileFinder::default()),
-                MenuItem::action(
-                    "Go to Heading...",
-                    zed_actions::outline::ToggleOutline,
-                ),
+                MenuItem::action("Go to Heading...", zed_actions::outline::ToggleOutline),
                 MenuItem::action("Go to Line/Column...", editor::actions::ToggleGoToLine),
             ],
         },
@@ -723,16 +715,13 @@ pub fn handle_keymap_file_changes(
 fn load_default_keymap(cx: &mut App) {
     let base_keymap = *BaseKeymap::get_global(cx);
     if base_keymap != BaseKeymap::None {
-        if let Ok(bindings) =
-            KeymapFile::load_asset_allow_partial_failure(DEFAULT_KEYMAP_PATH, cx)
+        if let Ok(bindings) = KeymapFile::load_asset_allow_partial_failure(DEFAULT_KEYMAP_PATH, cx)
         {
             cx.bind_keys(bindings);
         }
 
         if let Some(asset_path) = base_keymap.asset_path() {
-            if let Ok(bindings) =
-                KeymapFile::load_asset_allow_partial_failure(asset_path, cx)
-            {
+            if let Ok(bindings) = KeymapFile::load_asset_allow_partial_failure(asset_path, cx) {
                 cx.bind_keys(bindings);
             }
         }
@@ -770,17 +759,19 @@ fn open_bundled_file(
     window: &mut Window,
     cx: &mut Context<Workspace>,
 ) {
-    let existing = workspace.items_of_type::<editor::Editor>(cx).find(|editor| {
-        editor.read_with(cx, |editor, cx| {
-            editor.read_only(cx)
-                && editor.title(cx).as_ref() == title
-                && editor
-                    .buffer()
-                    .read(cx)
-                    .as_singleton()
-                    .is_some_and(|buffer| buffer.read(cx).file().is_none())
-        })
-    });
+    let existing = workspace
+        .items_of_type::<editor::Editor>(cx)
+        .find(|editor| {
+            editor.read_with(cx, |editor, cx| {
+                editor.read_only(cx)
+                    && editor.title(cx).as_ref() == title
+                    && editor
+                        .buffer()
+                        .read(cx)
+                        .as_singleton()
+                        .is_some_and(|buffer| buffer.read(cx).file().is_none())
+            })
+        });
     if let Some(existing) = existing {
         workspace.activate_item(&existing, true, true, window, cx);
         return;
@@ -802,8 +793,7 @@ fn open_bundled_file(
                         buffer.set_capability(Capability::ReadOnly, cx);
                     });
                     let buffer = cx.new(|cx| {
-                        multi_buffer::MultiBuffer::singleton(buffer, cx)
-                            .with_title(title.into())
+                        multi_buffer::MultiBuffer::singleton(buffer, cx).with_title(title.into())
                     });
                     workspace.update_in(cx, |workspace, window, cx| {
                         workspace.add_item_to_active_pane(

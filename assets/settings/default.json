@@ -513,14 +513,14 @@
     //
     // 1. Show the scrollbar if there's important information or
     //    follow the system's configured behavior (default):
-    //   "auto"
+    //    "auto"
     // 2. Match the system's configured behavior:
     //    "system"
     // 3. Always show the scrollbar:
     //    "always"
     // 4. Never show the scrollbar:
     //    "never"
-    "show": "never",
+    "show": "auto",
     // Whether to show cursor positions in the scrollbar.
     "cursors": true,
     // Whether to show git diff indicators in the scrollbar.
