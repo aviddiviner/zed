@@ -5,7 +5,7 @@ members = [
     "crates/acp_tools",
     "crates/aleph",
     "crates/action_log",
-    "crates/activity_indicator",
+
     "crates/agent",
     "crates/agent_servers",
     "crates/agent_settings",
@@ -36,9 +36,7 @@ members = [
     "crates/component",
     "crates/component_preview",
     "crates/context_server",
-    "crates/copilot",
-    "crates/copilot_chat",
-    "crates/crashes",
+
     "crates/credentials_provider",
     "crates/csv_preview",
     "crates/dap",
@@ -55,7 +53,7 @@ members = [
     "crates/encoding_selector",
     "crates/env_var",
     "crates/etw_tracing",
-    "crates/eval_utils",
+
     "crates/explorer_command_injector",
     "crates/extension",
     "crates/extension_api",
@@ -95,7 +93,7 @@ members = [
     "crates/icons",
     "crates/image_viewer",
     "crates/inspector_ui",
-    "crates/install_cli",
+
     "crates/journal",
     "crates/json_schema_store",
     "crates/keymap_editor",
@@ -126,7 +124,7 @@ members = [
     "crates/node_runtime",
     "crates/notifications",
     "crates/ollama",
-    "crates/onboarding",
+
     "crates/opencode",
     "crates/open_ai",
     "crates/open_path_prompt",
@@ -141,7 +139,7 @@ members = [
     "crates/project",
     "crates/project_benchmarks",
     "crates/project_panel",
-    "crates/project_symbols",
+
     "crates/prompt_store",
     "crates/proto",
     "crates/recent_projects",
@@ -150,7 +148,7 @@ members = [
     "crates/release_channel",
     "crates/remote",
     "crates/remote_connection",
-    "crates/remote_server",
+
 
     "crates/reqwest_client",
     "crates/rope",
@@ -213,7 +211,7 @@ members = [
     "crates/zed_actions",
     "crates/zed_credentials_provider",
     "crates/zed_env_vars",
-    "crates/zeta_prompt",
+
     "crates/zlog",
     "crates/zlog_settings",
     "crates/ztracing",
@@ -253,7 +251,7 @@ acp_tools = { path = "crates/acp_tools" }
 acp_thread = { path = "crates/acp_thread" }
 action_log = { path = "crates/action_log" }
 agent = { path = "crates/agent" }
-activity_indicator = { path = "crates/activity_indicator" }
+
 agent_ui = { path = "crates/agent_ui" }
 agent_settings = { path = "crates/agent_settings" }
 agent_servers = { path = "crates/agent_servers" }
@@ -285,10 +283,7 @@ component = { path = "crates/component" }
 component_preview = { path = "crates/component_preview" }
 console = "0.16"
 context_server = { path = "crates/context_server" }
-copilot = { path = "crates/copilot" }
-copilot_chat = { path = "crates/copilot_chat" }
-copilot_ui = { path = "crates/copilot_ui" }
-crashes = { path = "crates/crashes" }
+
 credentials_provider = { path = "crates/credentials_provider" }
 crossbeam = "0.8.4"
 csv_preview = { path = "crates/csv_preview"}
@@ -305,7 +300,7 @@ editor = { path = "crates/editor" }
 encoding_selector = { path = "crates/encoding_selector" }
 env_var = { path = "crates/env_var" }
 etw_tracing = { path = "crates/etw_tracing" }
-eval_utils = { path = "crates/eval_utils" }
+
 extension = { path = "crates/extension" }
 extension_host = { path = "crates/extension_host" }
 extensions_ui = { path = "crates/extensions_ui" }
@@ -343,7 +338,7 @@ image_viewer = { path = "crates/image_viewer" }
 edit_prediction_types = { path = "crates/edit_prediction_types" }
 
 inspector_ui = { path = "crates/inspector_ui" }
-install_cli = { path = "crates/install_cli" }
+
 journal = { path = "crates/journal" }
 json_schema_store = { path = "crates/json_schema_store" }
 keymap_editor = { path = "crates/keymap_editor" }
@@ -376,7 +371,7 @@ net = { path = "crates/net" }
 node_runtime = { path = "crates/node_runtime" }
 notifications = { path = "crates/notifications" }
 ollama = { path = "crates/ollama" }
-onboarding = { path = "crates/onboarding" }
+
 opencode = { path = "crates/opencode" }
 open_ai = { path = "crates/open_ai" }
 open_path_prompt = { path = "crates/open_path_prompt" }
@@ -391,7 +386,7 @@ prettier = { path = "crates/prettier" }
 settings_profile_selector = { path = "crates/settings_profile_selector" }
 project = { path = "crates/project" }
 project_panel = { path = "crates/project_panel" }
-project_symbols = { path = "crates/project_symbols" }
+
 prompt_store = { path = "crates/prompt_store" }
 proto = { path = "crates/proto" }
 recent_projects = { path = "crates/recent_projects" }
@@ -399,7 +394,7 @@ refineable = { path = "crates/refineable" }
 release_channel = { path = "crates/release_channel" }
 remote = { path = "crates/remote" }
 remote_connection = { path = "crates/remote_connection" }
-remote_server = { path = "crates/remote_server" }
+
 
 reqwest_client = { path = "crates/reqwest_client" }
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "e50e726ddd0292f6ef9de0dda6b90af4ed1fb66a", features = ["wav", "playback", "wav_output", "recording"] }
@@ -460,7 +455,7 @@ x_ai = { path = "crates/x_ai" }
 zed_actions = { path = "crates/zed_actions" }
 zed_credentials_provider = { path = "crates/zed_credentials_provider" }
 zed_env_vars = { path = "crates/zed_env_vars" }
-zeta_prompt = { path = "crates/zeta_prompt" }
+
 zlog = { path = "crates/zlog" }
 zlog_settings = { path = "crates/zlog_settings" }
 ztracing = { path = "crates/ztracing" }
@@ -886,7 +881,7 @@ cranelift-codegen = { opt-level = 3 }
 wasmtime-environ = { opt-level = 3 }
 wasmtime-internal-cranelift = { opt-level = 3 }
 # Build single-source-file crates with cg=1 as it helps make `cargo build` of a whole workspace a bit faster
-activity_indicator = { codegen-units = 1 }
+
 assets = { codegen-units = 1 }
 breadcrumbs = { codegen-units = 1 }
 collections = { codegen-units = 1 }
@@ -895,7 +890,7 @@ command_palette_hooks = { codegen-units = 1 }
 feature_flags = { codegen-units = 1 }
 file_icons = { codegen-units = 1 }
 image_viewer = { codegen-units = 1 }
-install_cli = { codegen-units = 1 }
+
 journal = { codegen-units = 1 }
 json_schema_store = { codegen-units = 1 }
 lmstudio = { codegen-units = 1 }
@@ -905,7 +900,7 @@ ollama = { codegen-units = 1 }
 outline = { codegen-units = 1 }
 paths = { codegen-units = 1 }
 prettier = { codegen-units = 1 }
-project_symbols = { codegen-units = 1 }
+
 refineable = { codegen-units = 1 }
 release_channel = { codegen-units = 1 }
 reqwest_client = { codegen-units = 1 }
