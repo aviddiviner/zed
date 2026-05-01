@@ -6,7 +6,8 @@ use git_ui::git_panel::GitPanel;
 use gpui::{
     App, AppContext as _, AsyncWindowContext, Context, Entity, Focusable as _, KeyBinding, Menu,
     MenuItem, OsAction, ReadGlobal as _, Size, Task, TitlebarOptions, UpdateGlobal as _,
-    WeakEntity, Window, WindowHandle, WindowKind, WindowOptions, actions, point, px,
+    VisualContext as _, WeakEntity, Window, WindowHandle, WindowKind, WindowOptions, actions,
+    point, px,
 };
 use image_viewer::ImageInfo;
 use language::Capability;
@@ -19,14 +20,15 @@ use settings::{
     SettingsStore,
 };
 use sidebar::Sidebar;
-use std::{future::Future, path::PathBuf, sync::Arc};
+use std::{collections::VecDeque, future::Future, path::PathBuf, sync::Arc};
 use theme::ActiveTheme;
-use util::{ResultExt, asset_str};
+use util::{ResultExt, asset_str, maybe};
 use uuid::Uuid;
 use workspace::Pane;
 use workspace::{
     AppState, CloseIntent, CloseWindow, MultiWorkspace, NewFile, NewWindow, Panel, Workspace,
-    WorkspaceSettings, with_active_or_new_workspace,
+    WorkspaceSettings, notifications::NotificationId,
+    notifications::simple_message_notification::MessageNotification, with_active_or_new_workspace,
 };
 use zed_actions::{About, OpenSettingsFile, Quit};
 
@@ -101,6 +103,11 @@ pub fn init(cx: &mut App) {
                 window,
                 cx,
             );
+        });
+    })
+    .on_action(|_: &OpenLog, cx| {
+        with_active_or_new_workspace(cx, |workspace, window, cx| {
+            open_log_file(workspace, window, cx);
         });
     })
     .on_action(|_: &zed_actions::OpenLicenses, cx| {
@@ -819,4 +826,116 @@ fn open_bundled_file(
             .await
     })
     .detach_and_log_err(cx);
+}
+
+fn open_log_file(workspace: &mut Workspace, window: &mut Window, cx: &mut Context<Workspace>) {
+    const MAX_LINES: usize = 1000;
+    let app_state = workspace.app_state();
+    let languages = app_state.languages.clone();
+    let fs = app_state.fs.clone();
+    cx.spawn_in(window, async move |workspace, cx| {
+        let log = {
+            let result = futures::join!(
+                fs.load(&paths::old_log_file()),
+                fs.load(&paths::log_file()),
+                languages.language_for_name("log")
+            );
+            match result {
+                (Err(_), Err(e), _) => Err(e),
+                (old_log, new_log, lang) => {
+                    let mut lines = VecDeque::with_capacity(MAX_LINES);
+                    for line in old_log
+                        .iter()
+                        .flat_map(|log| log.lines())
+                        .chain(new_log.iter().flat_map(|log| log.lines()))
+                    {
+                        if lines.len() == MAX_LINES {
+                            lines.pop_front();
+                        }
+                        lines.push_back(line);
+                    }
+                    Ok((
+                        lines
+                            .into_iter()
+                            .flat_map(|line| [line, "\n"])
+                            .collect::<String>(),
+                        lang.ok(),
+                    ))
+                }
+            }
+        };
+
+        let (log, log_language) = match log {
+            Ok((log, log_language)) => (log, log_language),
+            Err(e) => {
+                struct OpenLogError;
+
+                workspace
+                    .update(cx, |workspace, cx| {
+                        workspace.show_notification(
+                            NotificationId::unique::<OpenLogError>(),
+                            cx,
+                            |cx| {
+                                cx.new(|cx| {
+                                    MessageNotification::new(
+                                        format!(
+                                            "Unable to access/open log file at path {}: {e:#}",
+                                            paths::log_file().display()
+                                        ),
+                                        cx,
+                                    )
+                                })
+                            },
+                        );
+                    })
+                    .ok();
+                return;
+            }
+        };
+        let _: Option<()> = maybe!(async move {
+            let project = workspace
+                .read_with(cx, |workspace, _| workspace.project().clone())
+                .ok()?;
+            let buffer = project
+                .update(cx, |project, cx| {
+                    project.create_buffer(log_language, false, cx)
+                })
+                .await
+                .ok()?;
+            buffer.update(cx, |buffer, cx| {
+                buffer.set_capability(Capability::ReadOnly, cx);
+                buffer.set_text(log, cx);
+            });
+
+            let buffer = cx.new(|cx| {
+                multi_buffer::MultiBuffer::singleton(buffer, cx).with_title("Log".into())
+            });
+
+            let editor = cx
+                .new_window_entity(|window, cx| {
+                    let mut editor =
+                        editor::Editor::for_multibuffer(buffer, Some(project), window, cx);
+                    editor.set_read_only(true);
+                    editor.set_breadcrumb_header(format!(
+                        "Last {} lines in {}",
+                        MAX_LINES,
+                        paths::log_file().display()
+                    ));
+                    let last_multi_buffer_offset = editor.buffer().read(cx).len(cx);
+                    editor.change_selections(Default::default(), window, cx, |s| {
+                        s.select_ranges(Some(last_multi_buffer_offset..last_multi_buffer_offset));
+                    });
+                    editor
+                })
+                .ok()?;
+
+            workspace
+                .update_in(cx, |workspace, window, cx| {
+                    workspace.add_item_to_active_pane(Box::new(editor), None, true, window, cx);
+                })
+                .ok()
+        })
+        .await;
+    })
+    .detach();
 }
