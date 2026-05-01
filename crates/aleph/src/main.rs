@@ -281,6 +281,12 @@ fn main() {
         language_models::init(app_state.user_store.clone(), app_state.client.clone(), cx);
         acp_tools::init(cx);
 
+        project::AgentRegistryStore::init_global(
+            cx,
+            app_state.fs.clone(),
+            app_state.client.http_client(),
+        );
+
         let prompt_builder = PromptBuilder::load(app_state.fs.clone(), stdout_is_a_pty(), cx);
         agent_ui::init(
             app_state.fs.clone(),
