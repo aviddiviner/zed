@@ -31,7 +31,6 @@ agent-client-protocol.workspace = true
 agent.workspace = true
 agent_servers.workspace = true
 agent_settings.workspace = true
-ai_onboarding.workspace = true
 anyhow.workspace = true
 heapless.workspace = true
 audio = { workspace = true, optional = true }

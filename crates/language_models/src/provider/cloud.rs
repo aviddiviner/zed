@@ -1,4 +1,3 @@
-use ai_onboarding::YoungAccountBanner;
 use anyhow::Result;
 use client::Status;
 use client::{Client, RefreshLlmTokenListener, UserStore, global_llm_token, zed_urls};
@@ -287,7 +286,6 @@ struct ZedAiConfiguration {
     is_connected: bool,
     plan: Option<Plan>,
     eligible_for_trial: bool,
-    account_too_young: bool,
     sign_in_callback: Arc<dyn Fn(&mut Window, &mut App) + Send + Sync>,
 }
 
@@ -356,20 +354,12 @@ impl RenderOnce for ZedAiConfiguration {
                 );
         }
 
-        v_flex().gap_2().w_full().map(|this| {
-            if self.account_too_young {
-                this.child(YoungAccountBanner).child(
-                    Button::new("upgrade", "Upgrade to Pro")
-                        .style(ui::ButtonStyle::Tinted(ui::TintColor::Accent))
-                        .full_width()
-                        .on_click(|_, _, cx| cx.open_url(&zed_urls::upgrade_to_zed_pro_url(cx))),
-                )
-            } else {
-                this.text_sm()
-                    .child(subscription_text)
-                    .child(manage_subscription_buttons)
-            }
-        })
+        v_flex()
+            .gap_2()
+            .w_full()
+            .text_sm()
+            .child(subscription_text)
+            .child(manage_subscription_buttons)
     }
 }
 
@@ -405,7 +395,6 @@ impl Render for ConfigurationView {
             is_connected: !state.is_signed_out(cx),
             plan: user_store.plan(),
             eligible_for_trial: user_store.trial_started_at().is_none(),
-            account_too_young: user_store.account_too_young(),
             sign_in_callback: self.sign_in_callback.clone(),
         }
     }
@@ -429,13 +418,11 @@ impl Component for ZedAiConfiguration {
             is_connected: bool,
             plan: Option<Plan>,
             eligible_for_trial: bool,
-            account_too_young: bool,
         ) -> AnyElement {
             ZedAiConfiguration {
                 is_connected,
                 plan,
                 eligible_for_trial,
-                account_too_young,
                 sign_in_callback: Arc::new(|_, _| {}),
             }
             .into_any_element()
@@ -446,30 +433,30 @@ impl Component for ZedAiConfiguration {
                 .p_4()
                 .gap_4()
                 .children(vec![
-                    single_example("Not connected", configuration(false, None, false, false)),
+                    single_example("Not connected", configuration(false, None, false)),
                     single_example(
                         "Accept Terms of Service",
-                        configuration(true, None, true, false),
+                        configuration(true, None, true),
                     ),
                     single_example(
                         "No Plan - Not eligible for trial",
-                        configuration(true, None, false, false),
+                        configuration(true, None, false),
                     ),
                     single_example(
                         "No Plan - Eligible for trial",
-                        configuration(true, None, true, false),
+                        configuration(true, None, true),
                     ),
                     single_example(
                         "Free Plan",
-                        configuration(true, Some(Plan::ZedFree), true, false),
+                        configuration(true, Some(Plan::ZedFree), true),
                     ),
                     single_example(
                         "Zed Pro Trial Plan",
-                        configuration(true, Some(Plan::ZedProTrial), true, false),
+                        configuration(true, Some(Plan::ZedProTrial), true),
                     ),
                     single_example(
                         "Zed Pro Plan",
-                        configuration(true, Some(Plan::ZedPro), true, false),
+                        configuration(true, Some(Plan::ZedPro), true),
                     ),
                 ])
                 .into_any_element(),
