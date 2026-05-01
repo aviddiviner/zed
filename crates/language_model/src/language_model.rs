@@ -298,7 +298,7 @@ pub trait LanguageModelProvider: 'static {
 #[derive(Default, Clone, PartialEq, Eq)]
 pub enum ConfigurationViewTargetAgent {
     #[default]
-    ZedAgent,
+    AlephAgent,
     Other(SharedString),
 }
 

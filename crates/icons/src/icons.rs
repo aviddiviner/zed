@@ -275,7 +275,7 @@ pub enum IconName {
     WholeWord,
     XCircle,
     XCircleFilled,
-    ZedAgent,
+    AlephAgent,
     ZedAgentTwo,
     ZedAssistant,
     ZedPredict,
