@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use audio::{AudioSettings, CHANNEL_COUNT, RodioExt, SAMPLE_RATE};
 use cpal::DeviceId;
 use gpui::{

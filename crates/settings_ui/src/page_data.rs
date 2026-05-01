@@ -1,8 +1,7 @@
 use gpui::{Action as _, App};
-use itertools::Itertools as _;
-use settings::{LanguageSettingsContent, SemanticTokens, SettingsContent};
-use std::sync::{Arc, OnceLock};
-use strum::{EnumMessage, IntoDiscriminant as _, VariantArray};
+use settings::{LanguageSettingsContent, SettingsContent};
+use std::sync::Arc;
+use strum::IntoDiscriminant as _;
 use ui::IntoElement;
 
 use crate::{

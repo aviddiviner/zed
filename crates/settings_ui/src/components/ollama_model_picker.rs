@@ -25,7 +25,7 @@ impl OllamaModelPickerDelegate {
     fn new(
         current_model: SharedString,
         on_model_changed: impl Fn(SharedString, &mut Window, &mut App) + 'static,
-        cx: &mut Context<OllamaModelPicker>,
+        _cx: &mut Context<OllamaModelPicker>,
     ) -> Self {
         let mut models: Vec<SharedString> = Vec::new();
 
