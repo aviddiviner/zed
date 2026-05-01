@@ -101,7 +101,7 @@ impl HeadlessProject {
         init_worktree_trust: bool,
         cx: &mut Context<Self>,
     ) -> Self {
-        languages::init(languages.clone(), fs.clone(), node_runtime.clone(), cx);
+        languages::init(languages.clone(), cx);
 
         let worktree_store = cx.new(|cx| {
             let mut store = WorktreeStore::local(true, fs.clone(), WorktreeIdCounter::get(cx));

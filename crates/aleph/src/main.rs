@@ -226,7 +226,7 @@ fn main() {
         let node_runtime =
             NodeRuntime::new(client.http_client(), Some(shell_env_loaded_rx), options_rx);
 
-        languages::init(languages.clone(), fs.clone(), node_runtime.clone(), cx);
+        languages::init(languages.clone(), cx);
         let user_store = cx.new(|cx| UserStore::new(client.clone(), cx));
         let workspace_store = cx.new(|cx| WorkspaceStore::new(client.clone(), cx));
 
