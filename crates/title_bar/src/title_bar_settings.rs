@@ -4,6 +4,7 @@ use settings::{RegisterSetting, Settings, SettingsContent};
 #[derive(Copy, Clone, Debug, RegisterSetting)]
 pub struct TitleBarSettings {
     pub show_branch_status_icon: bool,
+    #[allow(dead_code)]
     pub show_onboarding_banner: bool,
     pub show_user_picture: bool,
     pub show_branch_name: bool,
