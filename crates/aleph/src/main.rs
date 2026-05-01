@@ -328,6 +328,7 @@ fn main() {
         markdown_preview::init(cx);
         settings_ui::init(cx);
         extensions_ui::init(cx);
+        json_schema_store::init(cx);
 
         cx.observe_global::<SettingsStore>({
             let http = app_state.client.http_client();

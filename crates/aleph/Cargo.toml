@@ -72,6 +72,9 @@ git_ui.workspace = true
 git_graph.workspace = true
 git_hosting_providers.workspace = true
 
+# JSON schema support (autocomplete + validation for settings files)
+json_schema_store.workspace = true
+
 # Search & Navigation
 search.workspace = true
 outline.workspace = true

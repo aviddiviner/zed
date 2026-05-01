@@ -545,6 +545,7 @@ dependencies = [
  "image",
  "image_viewer",
  "journal",
+ "json_schema_store",
  "language",
  "language_model",
  "language_models",

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# Quick debug build of Aleph for testing.
+#
+# Usage:
+#   script/build-aleph-debug
+#
+# Run with:
+#   ./target/debug/aleph
+
+set -euo pipefail
+
+export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
+
+echo "==> Building aleph (debug)..."
+cargo build -p aleph
+
+echo "==> Done: ./target/debug/aleph"
