@@ -1172,38 +1172,9 @@ fn keymap_page() -> SettingsPage {
         ]
     }
 
-    fn modal_editing_section() -> [SettingsPageItem; 3] {
-        [
-            SettingsPageItem::SectionHeader("Modal Editing"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Vim Mode",
-                description: "Enable Vim mode and key bindings.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim_mode"),
-                    pick: |settings_content| settings_content.vim_mode.as_ref(),
-                    write: write_vim_mode,
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Helix Mode",
-                description: "Enable Helix mode and key bindings.",
-                field: Box::new(SettingField {
-                    json_path: Some("helix_mode"),
-                    pick: |settings_content| settings_content.helix_mode.as_ref(),
-                    write: write_helix_mode,
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
     let items: Box<[SettingsPageItem]> = concat_sections!(
         keybindings_section(),
         base_keymap_section(),
-        modal_editing_section(),
     );
 
     SettingsPage {
@@ -1572,56 +1543,6 @@ fn editor_page() -> SettingsPage {
                             .sticky_scroll
                             .get_or_insert_default()
                             .enabled = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
-    fn signature_help_section() -> [SettingsPageItem; 4] {
-        [
-            SettingsPageItem::SectionHeader("Signature Help"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Auto Signature Help",
-                description: "Automatically show a signature help pop-up.",
-                field: Box::new(SettingField {
-                    json_path: Some("auto_signature_help"),
-                    pick: |settings_content| settings_content.editor.auto_signature_help.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.editor.auto_signature_help = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Signature Help After Edits",
-                description: "Show the signature help pop-up after completions or bracket pairs are inserted.",
-                field: Box::new(SettingField {
-                    json_path: Some("show_signature_help_after_edits"),
-                    pick: |settings_content| {
-                        settings_content
-                            .editor
-                            .show_signature_help_after_edits
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content.editor.show_signature_help_after_edits = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Snippet Sort Order",
-                description: "Determines how snippets are sorted relative to other completion items.",
-                field: Box::new(SettingField {
-                    json_path: Some("snippet_sort_order"),
-                    pick: |settings_content| settings_content.editor.snippet_sort_order.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.editor.snippet_sort_order = value;
                     },
                 }),
                 metadata: None,
@@ -2243,33 +2164,9 @@ fn editor_page() -> SettingsPage {
         ]
     }
 
-    fn toolbar_section() -> [SettingsPageItem; 6] {
+    fn toolbar_section() -> [SettingsPageItem; 4] {
         [
             SettingsPageItem::SectionHeader("Toolbar"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Breadcrumbs",
-                description: "Show breadcrumbs.",
-                field: Box::new(SettingField {
-                    json_path: Some("toolbar.breadcrumbs"),
-                    pick: |settings_content| {
-                        settings_content
-                            .editor
-                            .toolbar
-                            .as_ref()?
-                            .breadcrumbs
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .editor
-                            .toolbar
-                            .get_or_insert_default()
-                            .breadcrumbs = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
             SettingsPageItem::SettingItem(SettingItem {
                 title: "Quick Actions",
                 description: "Show quick action buttons (e.g., search, selection, editor controls, etc.).",
@@ -2342,282 +2239,6 @@ fn editor_page() -> SettingsPage {
                 metadata: None,
                 files: USER,
             }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Code Actions",
-                description: "Show code action buttons in the editor toolbar.",
-                field: Box::new(SettingField {
-                    json_path: Some("toolbar.code_actions"),
-                    pick: |settings_content| {
-                        settings_content
-                            .editor
-                            .toolbar
-                            .as_ref()?
-                            .code_actions
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .editor
-                            .toolbar
-                            .get_or_insert_default()
-                            .code_actions = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
-    fn vim_settings_section() -> [SettingsPageItem; 13] {
-        [
-            SettingsPageItem::SectionHeader("Vim"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Default Mode",
-                description: "The default mode when Vim starts.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.default_mode"),
-                    pick: |settings_content| settings_content.vim.as_ref()?.default_mode.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.vim.get_or_insert_default().default_mode = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Toggle Relative Line Numbers",
-                description: "Toggle relative line numbers in Vim mode.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.toggle_relative_line_numbers"),
-                    pick: |settings_content| {
-                        settings_content
-                            .vim
-                            .as_ref()?
-                            .toggle_relative_line_numbers
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .toggle_relative_line_numbers = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Use System Clipboard",
-                description: "Controls when to use system clipboard in Vim mode.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.use_system_clipboard"),
-                    pick: |settings_content| {
-                        settings_content.vim.as_ref()?.use_system_clipboard.as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .use_system_clipboard = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Use Smartcase Find",
-                description: "Enable smartcase searching in Vim mode.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.use_smartcase_find"),
-                    pick: |settings_content| {
-                        settings_content.vim.as_ref()?.use_smartcase_find.as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .use_smartcase_find = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Global Substitution Default",
-                description: "When enabled, the :substitute command replaces all matches in a line by default. The 'g' flag then toggles this behavior.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.gdefault"),
-                    pick: |settings_content| settings_content.vim.as_ref()?.gdefault.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.vim.get_or_insert_default().gdefault = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Highlight on Yank Duration",
-                description: "Duration in milliseconds to highlight yanked text in Vim mode.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.highlight_on_yank_duration"),
-                    pick: |settings_content| {
-                        settings_content
-                            .vim
-                            .as_ref()?
-                            .highlight_on_yank_duration
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .highlight_on_yank_duration = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Regex Search",
-                description: "Use regex search by default in Vim search.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.use_regex_search"),
-                    pick: |settings_content| {
-                        settings_content.vim.as_ref()?.use_regex_search.as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .use_regex_search = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Cursor Shape - Normal Mode",
-                description: "Cursor shape for normal mode.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.cursor_shape.normal"),
-                    pick: |settings_content| {
-                        settings_content
-                            .vim
-                            .as_ref()?
-                            .cursor_shape
-                            .as_ref()?
-                            .normal
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .cursor_shape
-                            .get_or_insert_default()
-                            .normal = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Cursor Shape - Insert Mode",
-                description: "Cursor shape for insert mode. Inherit uses the editor's cursor shape.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.cursor_shape.insert"),
-                    pick: |settings_content| {
-                        settings_content
-                            .vim
-                            .as_ref()?
-                            .cursor_shape
-                            .as_ref()?
-                            .insert
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .cursor_shape
-                            .get_or_insert_default()
-                            .insert = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Cursor Shape - Replace Mode",
-                description: "Cursor shape for replace mode.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.cursor_shape.replace"),
-                    pick: |settings_content| {
-                        settings_content
-                            .vim
-                            .as_ref()?
-                            .cursor_shape
-                            .as_ref()?
-                            .replace
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .cursor_shape
-                            .get_or_insert_default()
-                            .replace = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Cursor Shape - Visual Mode",
-                description: "Cursor shape for visual mode.",
-                field: Box::new(SettingField {
-                    json_path: Some("vim.cursor_shape.visual"),
-                    pick: |settings_content| {
-                        settings_content
-                            .vim
-                            .as_ref()?
-                            .cursor_shape
-                            .as_ref()?
-                            .visual
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .vim
-                            .get_or_insert_default()
-                            .cursor_shape
-                            .get_or_insert_default()
-                            .visual = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Custom Digraphs",
-                description: "Custom digraph mappings for Vim mode.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some("vim.custom_digraphs"),
-                        pick: |settings_content| {
-                            settings_content.vim.as_ref()?.custom_digraphs.as_ref()
-                        },
-                        write: |settings_content, value| {
-                            settings_content.vim.get_or_insert_default().custom_digraphs = value;
-                        },
-                    }
-                    .unimplemented(),
-                ),
-                metadata: None,
-                files: USER,
-            }),
         ]
     }
 
@@ -2626,14 +2247,12 @@ fn editor_page() -> SettingsPage {
         which_key_section(),
         multibuffer_section(),
         scrolling_section(),
-        signature_help_section(),
         hover_popover_section(),
         drag_and_drop_selection_section(),
         gutter_section(),
         scrollbar_section(),
         minimap_section(),
         toolbar_section(),
-        vim_settings_section(),
         language_settings_data(),
     );
 
@@ -4748,60 +4367,6 @@ fn panels_page() -> SettingsPage {
         ]
     }
 
-    fn terminal_panel_section() -> [SettingsPageItem; 4] {
-        [
-            SettingsPageItem::SectionHeader("Terminal Panel"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Terminal Dock",
-                description: "Where to dock the terminal panel.",
-                field: Box::new(SettingField {
-                    json_path: Some("terminal.dock"),
-                    pick: |settings_content| settings_content.terminal.as_ref()?.dock.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.terminal.get_or_insert_default().dock = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Terminal Panel Flexible Sizing",
-                description: "Whether the terminal panel should use flexible (proportional) sizing when docked to the left or right.",
-                field: Box::new(SettingField {
-                    json_path: Some("terminal.flexible"),
-                    pick: |settings_content| settings_content.terminal.as_ref()?.flexible.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.terminal.get_or_insert_default().flexible = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Count Badge",
-                description: "Show a badge on the terminal panel icon with the count of open terminals.",
-                field: Box::new(SettingField {
-                    json_path: Some("terminal.show_count_badge"),
-                    pick: |settings_content| {
-                        settings_content
-                            .terminal
-                            .as_ref()?
-                            .show_count_badge
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .terminal
-                            .get_or_insert_default()
-                            .show_count_badge = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
     fn outline_panel_section() -> [SettingsPageItem; 11] {
         [
             SettingsPageItem::SectionHeader("Outline Panel"),
@@ -5260,93 +4825,6 @@ fn panels_page() -> SettingsPage {
         ]
     }
 
-    fn debugger_panel_section() -> [SettingsPageItem; 2] {
-        [
-            SettingsPageItem::SectionHeader("Debugger Panel"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Debugger Panel Dock",
-                description: "The dock position of the debug panel.",
-                field: Box::new(SettingField {
-                    json_path: Some("debugger.dock"),
-                    pick: |settings_content| settings_content.debugger.as_ref()?.dock.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.debugger.get_or_insert_default().dock = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
-    fn collaboration_panel_section() -> [SettingsPageItem; 4] {
-        [
-            SettingsPageItem::SectionHeader("Collaboration Panel"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Collaboration Panel Button",
-                description: "Show the collaboration panel button in the status bar.",
-                field: Box::new(SettingField {
-                    json_path: Some("collaboration_panel.button"),
-                    pick: |settings_content| {
-                        settings_content
-                            .collaboration_panel
-                            .as_ref()?
-                            .button
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .collaboration_panel
-                            .get_or_insert_default()
-                            .button = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Collaboration Panel Dock",
-                description: "Where to dock the collaboration panel.",
-                field: Box::new(SettingField {
-                    json_path: Some("collaboration_panel.dock"),
-                    pick: |settings_content| {
-                        settings_content.collaboration_panel.as_ref()?.dock.as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .collaboration_panel
-                            .get_or_insert_default()
-                            .dock = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Collaboration Panel Default Width",
-                description: "Default width of the collaboration panel in pixels.",
-                field: Box::new(SettingField {
-                    json_path: Some("collaboration_panel.dock"),
-                    pick: |settings_content| {
-                        settings_content
-                            .collaboration_panel
-                            .as_ref()?
-                            .default_width
-                            .as_ref()
-                    },
-                    write: |settings_content, value| {
-                        settings_content
-                            .collaboration_panel
-                            .get_or_insert_default()
-                            .default_width = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
     fn agent_panel_section() -> [SettingsPageItem; 7] {
         [
             SettingsPageItem::SectionHeader("Agent Panel"),
@@ -5482,11 +4960,8 @@ fn panels_page() -> SettingsPage {
         title: "Panels",
         items: concat_sections![
             project_panel_section(),
-            terminal_panel_section(),
             outline_panel_section(),
             git_panel_section(),
-            debugger_panel_section(),
-            collaboration_panel_section(),
             agent_panel_section(),
         ],
     }
@@ -6572,14 +6047,13 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
         ]
     }
 
-    fn formatting_section() -> [SettingsPageItem; 7] {
+    fn formatting_section() -> [SettingsPageItem; 4] {
         [
             SettingsPageItem::SectionHeader("Formatting"),
             SettingsPageItem::SettingItem(SettingItem {
                 title: "Format On Save",
                 description: "Whether or not to perform a buffer format before saving.",
                 field: Box::new(
-                    // TODO(settings_ui): this setting should just be a bool
                     SettingField {
                         json_path: Some("languages.$(language).format_on_save"),
                         pick: |settings_content| {
@@ -6639,81 +6113,10 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
                 metadata: None,
                 files: USER | PROJECT,
             }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Formatter",
-                description: "How to perform a buffer format.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some("languages.$(language).formatter"),
-                        pick: |settings_content| {
-                            language_settings_field(settings_content, |language| {
-                                language.formatter.as_ref()
-                            })
-                        },
-                        write: |settings_content, value| {
-                            language_settings_field_mut(
-                                settings_content,
-                                value,
-                                |language, value| {
-                                    language.formatter = value;
-                                },
-                            )
-                        },
-                    }
-                    .unimplemented(),
-                ),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Use On Type Format",
-                description: "Whether to use additional LSP queries to format (and amend) the code after every \"trigger\" symbol input, defined by LSP server capabilities",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).use_on_type_format"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.use_on_type_format.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.use_on_type_format = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Code Actions On Format",
-                description: "Additional code actions to run when formatting.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some("languages.$(language).code_actions_on_format"),
-                        pick: |settings_content| {
-                            language_settings_field(settings_content, |language| {
-                                language.code_actions_on_format.as_ref()
-                            })
-                        },
-                        write: |settings_content, value| {
-                            language_settings_field_mut(
-                                settings_content,
-                                value,
-                                |language, value| {
-                                    language.code_actions_on_format = value;
-                                },
-                            )
-                        },
-                    }
-                    .unimplemented(),
-                ),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
         ]
     }
 
-    fn autoclose_section() -> [SettingsPageItem; 5] {
+    fn autoclose_section() -> [SettingsPageItem; 4] {
         [
             SettingsPageItem::SectionHeader("Autoclose"),
             SettingsPageItem::SettingItem(SettingItem {
@@ -6767,26 +6170,6 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
                     write: |settings_content, value| {
                         language_settings_field_mut(settings_content, value, |language, value| {
                             language.always_treat_brackets_as_autoclosed = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "JSX Tag Auto Close",
-                description: "Whether to automatically close JSX tags.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).jsx_tag_auto_close"),
-                    // TODO(settings_ui): this setting should just be a bool
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.jsx_tag_auto_close.as_ref()?.enabled.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.jsx_tag_auto_close.get_or_insert_default().enabled = value;
                         })
                     },
                 }),
@@ -6988,285 +6371,7 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
         ]
     }
 
-    fn inlay_hints_section() -> [SettingsPageItem; 10] {
-        [
-            SettingsPageItem::SectionHeader("Inlay Hints"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Enabled",
-                description: "Global switch to toggle hints on and off.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.enabled"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.enabled.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.inlay_hints.get_or_insert_default().enabled = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Value Hints",
-                description: "Global switch to toggle inline values on and off when debugging.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.show_value_hints"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.show_value_hints.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language
-                                .inlay_hints
-                                .get_or_insert_default()
-                                .show_value_hints = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Type Hints",
-                description: "Whether type hints should be shown.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.show_type_hints"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.show_type_hints.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.inlay_hints.get_or_insert_default().show_type_hints = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Parameter Hints",
-                description: "Whether parameter hints should be shown.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.show_parameter_hints"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.show_parameter_hints.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language
-                                .inlay_hints
-                                .get_or_insert_default()
-                                .show_parameter_hints = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Other Hints",
-                description: "Whether other hints should be shown.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.show_other_hints"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.show_other_hints.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language
-                                .inlay_hints
-                                .get_or_insert_default()
-                                .show_other_hints = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Background",
-                description: "Show a background for inlay hints.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.show_background"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.show_background.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.inlay_hints.get_or_insert_default().show_background = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Edit Debounce Ms",
-                description: "Whether or not to debounce inlay hints updates after buffer edits (set to 0 to disable debouncing).",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.edit_debounce_ms"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.edit_debounce_ms.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language
-                                .inlay_hints
-                                .get_or_insert_default()
-                                .edit_debounce_ms = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Scroll Debounce Ms",
-                description: "Whether or not to debounce inlay hints updates after buffer scrolls (set to 0 to disable debouncing).",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).inlay_hints.scroll_debounce_ms"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.inlay_hints.as_ref()?.scroll_debounce_ms.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language
-                                .inlay_hints
-                                .get_or_insert_default()
-                                .scroll_debounce_ms = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Toggle On Modifiers Press",
-                description: "Toggles inlay hints (hides or shows) when the user presses the modifiers specified.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some(
-                            "languages.$(language).inlay_hints.toggle_on_modifiers_press",
-                        ),
-                        pick: |settings_content| {
-                            language_settings_field(settings_content, |language| {
-                                language
-                                    .inlay_hints
-                                    .as_ref()?
-                                    .toggle_on_modifiers_press
-                                    .as_ref()
-                            })
-                        },
-                        write: |settings_content, value| {
-                            language_settings_field_mut(
-                                settings_content,
-                                value,
-                                |language, value| {
-                                    language
-                                        .inlay_hints
-                                        .get_or_insert_default()
-                                        .toggle_on_modifiers_press = value;
-                                },
-                            )
-                        },
-                    }
-                    .unimplemented(),
-                ),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-        ]
-    }
-
-    fn tasks_section() -> [SettingsPageItem; 4] {
-        [
-            SettingsPageItem::SectionHeader("Tasks"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Enabled",
-                description: "Whether tasks are enabled for this language.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).tasks.enabled"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.tasks.as_ref()?.enabled.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.tasks.get_or_insert_default().enabled = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Variables",
-                description: "Extra task variables to set for a particular language.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some("languages.$(language).tasks.variables"),
-                        pick: |settings_content| {
-                            language_settings_field(settings_content, |language| {
-                                language.tasks.as_ref()?.variables.as_ref()
-                            })
-                        },
-                        write: |settings_content, value| {
-                            language_settings_field_mut(
-                                settings_content,
-                                value,
-                                |language, value| {
-                                    language.tasks.get_or_insert_default().variables = value;
-                                },
-                            )
-                        },
-                    }
-                    .unimplemented(),
-                ),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Prefer LSP",
-                description: "Use LSP tasks over Zed language extension tasks.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).tasks.prefer_lsp"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.tasks.as_ref()?.prefer_lsp.as_ref()
-                        })
-                    },
-                    write: |settings_content, value| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.tasks.get_or_insert_default().prefer_lsp = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-        ]
-    }
-
-    fn miscellaneous_section() -> [SettingsPageItem; 7] {
+    fn miscellaneous_section() -> [SettingsPageItem; 5] {
         [
             SettingsPageItem::SectionHeader("Miscellaneous"),
             SettingsPageItem::SettingItem(SettingItem {
@@ -7285,32 +6390,6 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
                         })
                     },
                 }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Debuggers",
-                description: "Preferred debuggers for this language.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some("languages.$(language).debuggers"),
-                        pick: |settings_content| {
-                            language_settings_field(settings_content, |language| {
-                                language.debuggers.as_ref()
-                            })
-                        },
-                        write: |settings_content, value| {
-                            language_settings_field_mut(
-                                settings_content,
-                                value,
-                                |language, value| {
-                                    language.debuggers = value;
-                                },
-                            )
-                        },
-                    }
-                    .unimplemented(),
-                ),
                 metadata: None,
                 files: USER | PROJECT,
             }),
@@ -7360,19 +6439,6 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
                         language_settings_field_mut(settings_content, value, |language, value| {
                             language.colorize_brackets = value;
                         })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Vim/Emacs Modeline Support",
-                description: "Number of lines to search for modelines (set to 0 to disable).",
-                field: Box::new(SettingField {
-                    json_path: Some("modeline_lines"),
-                    pick: |settings_content| settings_content.modeline_lines.as_ref(),
-                    write: |settings_content, value| {
-                        settings_content.modeline_lines = value;
                     },
                 }),
                 metadata: None,
@@ -7442,20 +6508,6 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
 
     let is_global = active_language().is_none();
 
-    let lsp_document_colors_item = [SettingsPageItem::SettingItem(SettingItem {
-        title: "LSP Document Colors",
-        description: "How to render LSP color previews in the editor.",
-        field: Box::new(SettingField {
-            json_path: Some("lsp_document_colors"),
-            pick: |settings_content| settings_content.editor.lsp_document_colors.as_ref(),
-            write: |settings_content, value| {
-                settings_content.editor.lsp_document_colors = value;
-            },
-        }),
-        metadata: None,
-        files: USER,
-    })];
-
     if is_global {
         concat_sections!(
             indentation_section(),
@@ -7465,9 +6517,6 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
             autoclose_section(),
             whitespace_section(),
             completions_section(),
-            inlay_hints_section(),
-            lsp_document_colors_item,
-            tasks_section(),
             miscellaneous_section(),
             global_only_miscellaneous_sub_section(),
         )
@@ -7480,8 +6529,6 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
             autoclose_section(),
             whitespace_section(),
             completions_section(),
-            inlay_hints_section(),
-            tasks_section(),
             miscellaneous_section(),
         )
     }
@@ -7504,68 +6551,4 @@ where
     T::Discriminant: strum::VariantArray,
 {
     <<T as strum::IntoDiscriminant>::Discriminant as strum::VariantArray>::VARIANTS
-}
-
-/// Updates the `vim_mode` setting, disabling `helix_mode` if present and
-/// `vim_mode` is being enabled.
-fn write_vim_mode(settings: &mut SettingsContent, value: Option<bool>) {
-    if value == Some(true) && settings.helix_mode == Some(true) {
-        settings.helix_mode = Some(false);
-    }
-    settings.vim_mode = value;
-}
-
-/// Updates the `helix_mode` setting, disabling `vim_mode` if present and
-/// `helix_mode` is being enabled.
-fn write_helix_mode(settings: &mut SettingsContent, value: Option<bool>) {
-    if value == Some(true) && settings.vim_mode == Some(true) {
-        settings.vim_mode = Some(false);
-    }
-    settings.helix_mode = value;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_write_vim_helix_mode() {
-        // Enabling vim mode while `vim_mode` and `helix_mode` are not yet set
-        // should only update the `vim_mode` setting.
-        let mut settings = SettingsContent::default();
-        write_vim_mode(&mut settings, Some(true));
-        assert_eq!(settings.vim_mode, Some(true));
-        assert_eq!(settings.helix_mode, None);
-
-        // Enabling helix mode while `vim_mode` and `helix_mode` are not yet set
-        // should only update the `helix_mode` setting.
-        let mut settings = SettingsContent::default();
-        write_helix_mode(&mut settings, Some(true));
-        assert_eq!(settings.helix_mode, Some(true));
-        assert_eq!(settings.vim_mode, None);
-
-        // Disabling helix mode should only touch `helix_mode` setting when
-        // `vim_mode` is not set.
-        write_helix_mode(&mut settings, Some(false));
-        assert_eq!(settings.helix_mode, Some(false));
-        assert_eq!(settings.vim_mode, None);
-
-        // Enabling vim mode should update `vim_mode` but leave `helix_mode`
-        // untouched.
-        write_vim_mode(&mut settings, Some(true));
-        assert_eq!(settings.vim_mode, Some(true));
-        assert_eq!(settings.helix_mode, Some(false));
-
-        // Enabling helix mode should update `helix_mode` and disable
-        // `vim_mode`.
-        write_helix_mode(&mut settings, Some(true));
-        assert_eq!(settings.helix_mode, Some(true));
-        assert_eq!(settings.vim_mode, Some(false));
-
-        // Enabling vim mode should update `vim_mode` and disable
-        // `helix_mode`.
-        write_vim_mode(&mut settings, Some(true));
-        assert_eq!(settings.vim_mode, Some(true));
-        assert_eq!(settings.helix_mode, Some(false));
-    }
 }
