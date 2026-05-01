@@ -138,7 +138,13 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [ ] Make `lsp` an optional dependency in `language` crate (decouple cleanly)
 - [ ] Remove `task` dependency from `language` crate
 - [ ] Remove `node_runtime` from `AppState` (transitive requirement currently)
-- [x] Rename `IconName::ZedAgent` → `AlephAgent`, rename SVG file to `aleph_agent.svg`, update all references (~5 locations)
+- [x] Rename `IconName::ZedAgent` → `AlephAgent`, rename SVG file to `aleph_agent.svg`, update all references
+- [x] Rename `VectorName::ZedLogo` → `AlephLogo`, rename SVG to `aleph_logo.svg`
+- [x] Remove `ai_onboarding` crate (Zed cloud subscription upsell — dead for Aleph)
+- [x] Remove dead icon SVGs and enum variants (Copilot, Supermaven, REPL, debug toolbar, etc.)
+- [x] Add `keymap_editor` crate (visual keybinding editor, was missing from Aleph)
+- [ ] Remove `UserStore` from `AppState` / `Project` (transitive, zero runtime cost but adds dead code)
+- [ ] First-run onboarding screen with base keymap picker (Zed's `onboarding` crate had a 2×3 icon grid using `editor_*.svg` — build Aleph-appropriate version)
 
 ---
 

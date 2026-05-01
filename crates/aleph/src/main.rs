@@ -333,6 +333,7 @@ fn main() {
         feedback::init(cx);
         markdown_preview::init(cx);
         settings_ui::init(cx);
+        keymap_editor::init(cx);
         extensions_ui::init(cx);
         json_schema_store::init(cx);
 

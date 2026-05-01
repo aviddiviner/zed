@@ -722,13 +722,22 @@ pub fn handle_keymap_file_changes(
 fn load_default_keymap(cx: &mut App) {
     let base_keymap = *BaseKeymap::get_global(cx);
     if base_keymap != BaseKeymap::None {
-        if let Ok(bindings) = KeymapFile::load_asset_allow_partial_failure(DEFAULT_KEYMAP_PATH, cx)
+        if let Ok(mut bindings) =
+            KeymapFile::load_asset_allow_partial_failure(DEFAULT_KEYMAP_PATH, cx)
         {
+            for binding in &mut bindings {
+                binding.set_meta(KeybindSource::Default.meta());
+            }
             cx.bind_keys(bindings);
         }
 
         if let Some(asset_path) = base_keymap.asset_path() {
-            if let Ok(bindings) = KeymapFile::load_asset_allow_partial_failure(asset_path, cx) {
+            if let Ok(mut bindings) =
+                KeymapFile::load_asset_allow_partial_failure(asset_path, cx)
+            {
+                for binding in &mut bindings {
+                    binding.set_meta(KeybindSource::Base.meta());
+                }
                 cx.bind_keys(bindings);
             }
         }

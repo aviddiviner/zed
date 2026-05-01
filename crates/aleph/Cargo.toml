@@ -83,6 +83,7 @@ command_palette.workspace = true
 command_palette_hooks.workspace = true
 go_to_line.workspace = true
 file_icons.workspace = true
+keymap_editor.workspace = true
 
 # Settings & Theme
 settings.workspace = true
