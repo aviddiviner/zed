@@ -21,7 +21,6 @@ members = [
     "crates/bedrock",
     "crates/breadcrumbs",
     "crates/buffer_diff",
-    "crates/call",
     "crates/channel",
     "crates/cli",
     "crates/client",
@@ -107,8 +106,6 @@ members = [
 
     "crates/languages",
     "crates/line_ending_selector",
-    "crates/livekit_api",
-    "crates/livekit_client",
     "crates/lmstudio",
     "crates/lsp",
     "crates/markdown",
@@ -266,7 +263,6 @@ aws_http_client = { path = "crates/aws_http_client" }
 bedrock = { path = "crates/bedrock" }
 breadcrumbs = { path = "crates/breadcrumbs" }
 buffer_diff = { path = "crates/buffer_diff" }
-call = { path = "crates/call" }
 channel = { path = "crates/channel" }
 cli = { path = "crates/cli" }
 client = { path = "crates/client" }
@@ -352,8 +348,6 @@ language_models_cloud = { path = "crates/language_models_cloud" }
 
 languages = { path = "crates/languages" }
 line_ending_selector = { path = "crates/line_ending_selector" }
-livekit_api = { path = "crates/livekit_api" }
-livekit_client = { path = "crates/livekit_client" }
 lmstudio = { path = "crates/lmstudio" }
 lsp = { path = "crates/lsp" }
 markdown = { path = "crates/markdown" }
