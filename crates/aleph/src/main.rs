@@ -47,6 +47,10 @@ struct Args {
     /// Custom user data directory
     #[arg(long)]
     user_data_dir: Option<String>,
+
+    /// Output current environment variables as JSON to stdout
+    #[arg(long, hide = true)]
+    printenv: bool,
 }
 
 fn main() {
@@ -56,6 +60,11 @@ fn main() {
     util::prevent_root_execution();
 
     let args = Args::parse();
+
+    if args.printenv {
+        util::shell_env::print_env();
+        return;
+    }
 
     if let Some(dir) = &args.user_data_dir {
         paths::set_custom_data_dir(dir);
