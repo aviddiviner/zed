@@ -1209,7 +1209,7 @@
       "alt-b": ["terminal::SendText", "\u001bb"],
       "alt-f": ["terminal::SendText", "\u001bf"],
       "alt-.": ["terminal::SendText", "\u001b."],
-      "ctrl-delete": ["terminal::SendText", "\u001bd"],
+      "ctrl-delete": ["terminal::SendText", "\u001b[3;5~"],
       // Overrides for conflicting keybindings
       "ctrl-b": ["terminal::SendKeystroke", "ctrl-b"],
       "ctrl-c": ["terminal::SendKeystroke", "ctrl-c"],
@@ -1367,6 +1367,7 @@
     "context": "Welcome",
     "use_key_equivalents": true,
     "bindings": {
+      "ctrl-n": "workspace::NewFile",
       "ctrl-=": ["zed::IncreaseUiFontSize", { "persist": false }],
       "ctrl-+": ["zed::IncreaseUiFontSize", { "persist": false }],
       "ctrl--": ["zed::DecreaseUiFontSize", { "persist": false }],

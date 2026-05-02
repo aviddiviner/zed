@@ -250,7 +250,6 @@ pub fn migrate_settings(text: &str) -> Result<Option<String>> {
         MigrationType::Json(migrations::m_2026_03_30::make_play_sound_when_agent_done_an_enum),
         MigrationType::Json(migrations::m_2026_04_01::restructure_profiles_with_settings_key),
         MigrationType::Json(migrations::m_2026_04_10::rename_web_search_to_search_web),
-        MigrationType::Json(migrations::m_2026_04_15::remove_settings_from_http_context_servers),
         MigrationType::Json(
             migrations::m_2026_04_17::promote_show_branch_icon_true_to_show_branch_status_icon,
         ),
@@ -4935,6 +4934,98 @@ mod tests {
     }
 
     #[test]
+    fn test_migration_helpers_handle_various_profile_forms() {
+        let setting = "a_setting";
+        let old_value = "old_value";
+        let new_value = "new_value";
+
+        fn language_setting_fn(value: &mut serde_json::Value, _: &[&str]) -> anyhow::Result<()> {
+            if let Some(obj) = value.as_object_mut() {
+                if let Some(v) = obj.get_mut("a_setting") {
+                    *v = serde_json::json!("new_value");
+                }
+            }
+            Ok(())
+        }
+
+        let mut settings_fn = |map: &mut serde_json::Map<String, serde_json::Value>| {
+            if let Some(v) = map.get_mut(setting) {
+                *v = serde_json::json!(new_value);
+            }
+            Ok(())
+        };
+
+        // Legacy form
+        let input = serde_json::json!({
+            "profiles": {
+                "work": {
+                    setting: old_value
+                }
+            }
+        });
+        let expected = serde_json::json!({
+            "profiles": {
+                "work": {
+                    setting: new_value
+                }
+            }
+        });
+
+        let mut value = input.clone();
+        migrations::migrate_settings(&mut value, &mut settings_fn).unwrap();
+        assert_eq!(value, expected);
+
+        let mut value = input;
+        migrations::migrate_language_setting(&mut value, language_setting_fn).unwrap();
+        assert_eq!(value, expected);
+
+        // Form after migration: `m_2026_04_01`
+        let input = serde_json::json!({
+            "profiles": {
+                "work": {
+                    "settings": {
+                        setting: old_value
+                    }
+                }
+            }
+        });
+        let expected = serde_json::json!({
+            "profiles": {
+                "work": {
+                    "settings": {
+                        setting: new_value
+                    }
+                }
+            }
+        });
+
+        let mut value = input.clone();
+        migrations::migrate_settings(&mut value, &mut settings_fn).unwrap();
+        assert_eq!(value, expected);
+
+        let mut value = input;
+        migrations::migrate_language_setting(&mut value, language_setting_fn).unwrap();
+        assert_eq!(value, expected);
+
+        // Base-only form after migration: `m_2026_04_01` (no settings to migrate)
+        let input = serde_json::json!({
+            "profiles": {
+                "work": {
+                    "base": "default"
+                }
+            }
+        });
+
+        let mut value = input.clone();
+        migrations::migrate_settings(&mut value, &mut settings_fn).unwrap();
+        assert_eq!(value, input);
+
+        let mut value = input.clone();
+        migrations::migrate_language_setting(&mut value, language_setting_fn).unwrap();
+        assert_eq!(value, input);
+    }
+
+    #[test]
     fn test_rename_web_search_to_search_web_root_level_profile() {
         assert_migrate_with_migrations(
             &[MigrationType::Json(
@@ -4986,61 +5077,47 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_settings_from_http_context_servers() {
+    fn test_mcp_settings_migration_adds_settings_to_extension_servers() {
         assert_migrate_settings(
-            &r#"
-            {
-                "context_servers": {
-                    "http_server": {
-                        "url": "https://example.com/mcp",
-                        "settings": {}
-                    },
-                    "http_server_with_headers": {
-                        "url": "https://example.com/mcp",
-                        "headers": {
-                            "Authorization": "Bearer token"
-                        },
-                        "settings": {}
-                    },
-                    "extension_server": {
-                        "settings": {
-                            "foo": "bar"
-                        }
-                    },
-                    "stdio_server": {
-                        "command": "npx",
-                        "args": ["-y", "some-server"]
-                    }
-                }
+            r#"{
+    "context_servers": {
+        "extension_server": {},
+        "stdio_server": {
+            "command": "npx",
+            "args": ["-y", "some-server"]
+        },
+        "http_server": {
+            "url": "https://example.com/mcp"
+        },
+        "http_server_with_headers": {
+            "url": "https://example.com/mcp",
+            "headers": {
+                "Authorization": "Bearer token"
             }
-            "#
-            .unindent(),
+        }
+    }
+}"#,
             Some(
-                &r#"
-                {
-                    "context_servers": {
-                        "http_server": {
-                            "url": "https://example.com/mcp"
-                        },
-                        "http_server_with_headers": {
-                            "url": "https://example.com/mcp",
-                            "headers": {
-                                "Authorization": "Bearer token"
-                            }
-                        },
-                        "extension_server": {
-                            "settings": {
-                                "foo": "bar"
-                            }
-                        },
-                        "stdio_server": {
-                            "command": "npx",
-                            "args": ["-y", "some-server"]
-                        }
-                    }
-                }
-                "#
-                .unindent(),
+                r#"{
+    "context_servers": {
+        "extension_server": {
+            "settings": {}
+        },
+        "stdio_server": {
+            "command": "npx",
+            "args": ["-y", "some-server"]
+        },
+        "http_server": {
+            "url": "https://example.com/mcp"
+        },
+        "http_server_with_headers": {
+            "url": "https://example.com/mcp",
+            "headers": {
+                "Authorization": "Bearer token"
+            }
+        }
+    }
+}"#,
             ),
         );
     }

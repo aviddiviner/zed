@@ -262,6 +262,8 @@ actions!(
         ActivatePreviousWindow,
         /// Adds a folder to the current project.
         AddFolderToProject,
+        /// Clears all bookmarks in the project.
+        ClearBookmarks,
         /// Clears all notifications.
         ClearAllNotifications,
         /// Clears all navigation history, including forward/backward navigation, recently opened files, and recently closed tabs. **This action is irreversible**.
@@ -3371,24 +3373,27 @@ impl Workspace {
                                 };
                                 keystroke
                             };
-                            cx.update(|window, cx| {
-                                let focused = window.focused(cx);
-                                window.dispatch_keystroke(keystroke.clone(), cx);
-                                if window.focused(cx) != focused {
-                                    // dispatch_keystroke may cause the focus to change.
-                                    // draw's side effect is to schedule the FocusChanged events in the current flush effect cycle
-                                    // And we need that to happen before the next keystroke to keep vim mode happy...
-                                    // (Note that the tests always do this implicitly, so you must manually test with something like:
-                                    //   "bindings": { "g z": ["workspace::SendKeystrokes", ": j <enter> u"]}
-                                    // )
-                                    window.draw(cx).clear();
-                                }
-                            })
-                            .ok();
+                            let focus_changed = cx
+                                .update(|window, cx| {
+                                    let focused = window.focused(cx);
+                                    window.dispatch_keystroke(keystroke.clone(), cx);
+                                    if window.focused(cx) != focused {
+                                        // dispatch_keystroke may cause the focus to change.
+                                        // draw's side effect is to schedule the FocusChanged events in the current flush effect cycle
+                                        // And we need that to happen before the next keystroke to keep vim mode happy...
+                                        // (Note that the tests always do this implicitly, so you must manually test with something like:
+                                        //   "bindings": { "g z": ["workspace::SendKeystrokes", ": j <enter> u"]}
+                                        // )
+                                        window.draw(cx).clear();
+                                        return true;
+                                    }
+                                    false
+                                })
+                                .unwrap_or(false);
 
-                            // Yield between synthetic keystrokes so deferred focus and
-                            // other effects can settle before dispatching the next key.
-                            yield_now().await;
+                            if focus_changed {
+                                yield_now().await;
+                            }
                         }
 
                         *keystrokes.borrow_mut() = Default::default();
@@ -3439,24 +3444,26 @@ impl Workspace {
         let project = self.project.clone();
         cx.spawn_in(window, async move |workspace, cx| {
             let dirty_items = if save_intent == SaveIntent::Close && !dirty_items.is_empty() {
-                let (serialize_tasks, remaining_dirty_items) =
-                    workspace.update_in(cx, |workspace, window, cx| {
-                        let mut remaining_dirty_items = Vec::new();
-                        let mut serialize_tasks = Vec::new();
-                        for (pane, item) in dirty_items {
-                            if let Some(task) = item
-                                .to_serializable_item_handle(cx)
-                                .and_then(|handle| handle.serialize(workspace, true, window, cx))
-                            {
-                                serialize_tasks.push(task);
-                            } else {
-                                remaining_dirty_items.push((pane, item));
-                            }
+                let mut serialize_tasks = Vec::new();
+                let mut remaining_dirty_items = Vec::new();
+                workspace.update_in(cx, |workspace, window, cx| {
+                    for (pane, item) in dirty_items {
+                        if let Some(task) = item
+                            .to_serializable_item_handle(cx)
+                            .and_then(|handle| handle.serialize(workspace, true, window, cx))
+                        {
+                            serialize_tasks.push((pane, item, task));
+                        } else {
+                            remaining_dirty_items.push((pane, item));
                         }
-                        (serialize_tasks, remaining_dirty_items)
-                    })?;
+                    }
+                })?;
 
-                futures::future::try_join_all(serialize_tasks).await?;
+                for (pane, item, task) in serialize_tasks {
+                    if task.await.log_err().is_none() {
+                        remaining_dirty_items.push((pane, item));
+                    }
+                }
 
                 if !remaining_dirty_items.is_empty() {
                     workspace.update(cx, |_, cx| cx.emit(Event::Activate))?;
@@ -3855,11 +3862,18 @@ impl Workspace {
                     .project
                     .read(cx)
                     .worktree_for_id(path.worktree_id, cx)?;
-                if worktree.read(cx).is_visible() {
-                    abs_path
-                } else {
-                    None
+                if !worktree.read(cx).is_visible() {
+                    return None;
                 }
+                let settings_location = SettingsLocation {
+                    worktree_id: path.worktree_id,
+                    path: &path.path,
+                };
+                if WorktreeSettings::get(Some(settings_location), cx).is_path_read_only(&path.path)
+                {
+                    return None;
+                }
+                abs_path
             })
             .next()
     }
@@ -6693,6 +6707,13 @@ impl Workspace {
 
         match self.workspace_location(cx) {
             WorkspaceLocation::Location(location, paths) => {
+                let bookmarks = self.project.update(cx, |project, cx| {
+                    project
+                        .bookmark_store()
+                        .read(cx)
+                        .all_serialized_bookmarks(cx)
+                });
+
                 let breakpoints = self.project.update(cx, |project, cx| {
                     project
                         .breakpoint_store()
@@ -6719,6 +6740,7 @@ impl Workspace {
                     docks,
                     centered_layout: self.centered_layout,
                     session_id: self.session_id.clone(),
+                    bookmarks,
                     breakpoints,
                     window_id: Some(window.window_handle().window_id().as_u64()),
                     user_toolchains,
@@ -6927,6 +6949,15 @@ impl Workspace {
 
                 cx.notify();
             })?;
+
+            project
+                .update(cx, |project, cx| {
+                    project.bookmark_store().update(cx, |bookmark_store, cx| {
+                        bookmark_store.load_serialized_bookmarks(serialized_workspace.bookmarks, cx)
+                    })
+                })
+                .await
+                .log_err();
 
             let _ = project
                 .update(cx, |project, cx| {
@@ -7400,6 +7431,7 @@ impl Workspace {
             .on_action(cx.listener(|workspace, _: &FocusCenterPane, window, cx| {
                 workspace.focus_center_pane(window, cx);
             }))
+            .on_action(cx.listener(Workspace::clear_bookmarks))
             .on_action(cx.listener(Workspace::cancel))
     }
 
@@ -7409,11 +7441,7 @@ impl Workspace {
     }
 
     #[cfg(any(test, feature = "test-support"))]
-    pub(crate) fn test_new(
-        project: Entity<Project>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn test_new(project: Entity<Project>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         use node_runtime::NodeRuntime;
         use session::Session;
 
@@ -7529,6 +7557,15 @@ impl Workspace {
             .detach_and_log_err(cx);
         }
         cx.notify();
+    }
+
+    pub fn clear_bookmarks(&mut self, _: &ClearBookmarks, _: &mut Window, cx: &mut Context<Self>) {
+        self.project()
+            .read(cx)
+            .bookmark_store()
+            .update(cx, |bookmark_store, cx| {
+                bookmark_store.clear_bookmarks(cx);
+            });
     }
 
     fn adjust_padding(padding: Option<f32>) -> f32 {
@@ -8218,6 +8255,15 @@ impl Render for Workspace {
             .collect::<Vec<_>>();
         let bottom_dock_layout = WorkspaceSettings::get_global(cx).bottom_dock_layout;
 
+        let pane_render_context = PaneRenderContext {
+            follower_states: &self.follower_states,
+            active_call: self.active_call(),
+            active_pane: &self.active_pane,
+            app_state: &self.app_state,
+            project: &self.project,
+            workspace: &self.weak_self,
+        };
+
         div()
             .relative()
             .size_full()
@@ -8225,400 +8271,387 @@ impl Render for Workspace {
             .flex_col()
             .font(ui_font)
             .gap_0()
-                .justify_start()
-                .items_start()
-                .text_color(colors.text)
-                .overflow_hidden()
-                .children(self.titlebar_item.clone())
-                .on_modifiers_changed(move |_, _, cx| {
-                    for &id in &notification_entities {
-                        cx.notify(id);
-                    }
-                })
-                .child(
-                    div()
-                        .size_full()
-                        .relative()
-                        .flex_1()
-                        .flex()
-                        .flex_col()
-                        .child(
-                            div()
-                                .id("workspace")
-                                .bg(colors.background)
-                                .relative()
-                                .flex_1()
-                                .w_full()
-                                .flex()
-                                .flex_col()
-                                .overflow_hidden()
-                                .border_t_1()
-                                .border_b_1()
-                                .border_color(colors.border)
-                                .child({
-                                    let this = cx.entity();
-                                    canvas(
-                                        move |bounds, window, cx| {
-                                            this.update(cx, |this, cx| {
-                                                let bounds_changed = this.bounds != bounds;
-                                                this.bounds = bounds;
+            .justify_start()
+            .items_start()
+            .text_color(colors.text)
+            .overflow_hidden()
+            .children(self.titlebar_item.clone())
+            .on_modifiers_changed(move |_, _, cx| {
+                for &id in &notification_entities {
+                    cx.notify(id);
+                }
+            })
+            .child(
+                div()
+                    .size_full()
+                    .relative()
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .child(
+                        div()
+                            .id("workspace")
+                            .bg(colors.background)
+                            .relative()
+                            .flex_1()
+                            .w_full()
+                            .flex()
+                            .flex_col()
+                            .overflow_hidden()
+                            .border_t_1()
+                            .border_b_1()
+                            .border_color(colors.border)
+                            .child({
+                                let this = cx.entity();
+                                canvas(
+                                    move |bounds, window, cx| {
+                                        this.update(cx, |this, cx| {
+                                            let bounds_changed = this.bounds != bounds;
+                                            this.bounds = bounds;
 
-                                                if bounds_changed {
-                                                    this.left_dock.update(cx, |dock, cx| {
-                                                        dock.clamp_panel_size(
-                                                            bounds.size.width,
-                                                            window,
-                                                            cx,
-                                                        )
-                                                    });
+                                            if bounds_changed {
+                                                this.left_dock.update(cx, |dock, cx| {
+                                                    dock.clamp_panel_size(
+                                                        bounds.size.width,
+                                                        window,
+                                                        cx,
+                                                    )
+                                                });
 
-                                                    this.right_dock.update(cx, |dock, cx| {
-                                                        dock.clamp_panel_size(
-                                                            bounds.size.width,
-                                                            window,
-                                                            cx,
-                                                        )
-                                                    });
+                                                this.right_dock.update(cx, |dock, cx| {
+                                                    dock.clamp_panel_size(
+                                                        bounds.size.width,
+                                                        window,
+                                                        cx,
+                                                    )
+                                                });
 
-                                                    this.bottom_dock.update(cx, |dock, cx| {
-                                                        dock.clamp_panel_size(
-                                                            bounds.size.height,
-                                                            window,
-                                                            cx,
-                                                        )
-                                                    });
-                                                }
-                                            })
-                                        },
-                                        |_, _, _, _| {},
-                                    )
-                                    .absolute()
-                                    .size_full()
-                                })
-                                .when(self.zoomed.is_none(), |this| {
-                                    this.on_drag_move(cx.listener(
-                                        move |workspace,
-                                              e: &DragMoveEvent<DraggedDock>,
-                                              window,
-                                              cx| {
-                                            if workspace.previous_dock_drag_coordinates
-                                                != Some(e.event.position)
-                                            {
-                                                workspace.previous_dock_drag_coordinates =
-                                                    Some(e.event.position);
-
-                                                match e.drag(cx).0 {
-                                                    DockPosition::Left => {
-                                                        workspace.resize_left_dock(
-                                                            e.event.position.x
-                                                                - workspace.bounds.left(),
-                                                            window,
-                                                            cx,
-                                                        );
-                                                    }
-                                                    DockPosition::Right => {
-                                                        workspace.resize_right_dock(
-                                                            workspace.bounds.right()
-                                                                - e.event.position.x,
-                                                            window,
-                                                            cx,
-                                                        );
-                                                    }
-                                                    DockPosition::Bottom => {
-                                                        workspace.resize_bottom_dock(
-                                                            workspace.bounds.bottom()
-                                                                - e.event.position.y,
-                                                            window,
-                                                            cx,
-                                                        );
-                                                    }
-                                                };
-                                                workspace.serialize_workspace(window, cx);
+                                                this.bottom_dock.update(cx, |dock, cx| {
+                                                    dock.clamp_panel_size(
+                                                        bounds.size.height,
+                                                        window,
+                                                        cx,
+                                                    )
+                                                });
                                             }
-                                        },
-                                    ))
+                                        })
+                                    },
+                                    |_, _, _, _| {},
+                                )
+                                .absolute()
+                                .size_full()
+                            })
+                            .when(self.zoomed.is_none(), |this| {
+                                this.on_drag_move(cx.listener(
+                                    move |workspace, e: &DragMoveEvent<DraggedDock>, window, cx| {
+                                        if workspace.previous_dock_drag_coordinates
+                                            != Some(e.event.position)
+                                        {
+                                            workspace.previous_dock_drag_coordinates =
+                                                Some(e.event.position);
 
-                                })
-                                .child({
-                                    match bottom_dock_layout {
-                                        BottomDockLayout::Full => div()
-                                            .flex()
-                                            .flex_col()
-                                            .h_full()
-                                            .child(
-                                                div()
-                                                    .flex()
-                                                    .flex_row()
-                                                    .flex_1()
-                                                    .overflow_hidden()
-                                                    .children(self.render_dock(
-                                                        DockPosition::Left,
-                                                        &self.left_dock,
+                                            match e.drag(cx).0 {
+                                                DockPosition::Left => {
+                                                    workspace.resize_left_dock(
+                                                        e.event.position.x
+                                                            - workspace.bounds.left(),
                                                         window,
                                                         cx,
-                                                    ))
-
-                                                    .child(
-                                                        div()
-                                                            .flex()
-                                                            .flex_col()
-                                                            .flex_1()
-                                                            .overflow_hidden()
-                                                            .child(
-                                                                h_flex()
-                                                                    .flex_1()
-                                                                    .when_some(
-                                                                        paddings.0,
-                                                                        |this, p| {
-                                                                            this.child(
-                                                                                p.border_r_1(),
-                                                                            )
-                                                                        },
-                                                                    )
-                                                                    .child(self.center.render(
-                                                                        self.zoomed.as_ref(),
-                                                                        &PaneRenderContext {
-                                                                            follower_states:
-                                                                                &self.follower_states,
-                                                                            active_call: self.active_call(),
-                                                                            active_pane: &self.active_pane,
-                                                                            app_state: &self.app_state,
-                                                                            project: &self.project,
-                                                                            workspace: &self.weak_self,
-                                                                        },
-                                                                        window,
-                                                                        cx,
-                                                                    ))
-                                                                    .when_some(
-                                                                        paddings.1,
-                                                                        |this, p| {
-                                                                            this.child(
-                                                                                p.border_l_1(),
-                                                                            )
-                                                                        },
-                                                                    ),
-                                                            ),
-                                                    )
-
-                                                    .children(self.render_dock(
-                                                        DockPosition::Right,
-                                                        &self.right_dock,
+                                                    );
+                                                }
+                                                DockPosition::Right => {
+                                                    workspace.resize_right_dock(
+                                                        workspace.bounds.right()
+                                                            - e.event.position.x,
                                                         window,
                                                         cx,
-                                                    )),
-                                            )
-                                            .child(div().w_full().children(self.render_dock(
-                                                DockPosition::Bottom,
-                                                &self.bottom_dock,
-                                                window,
-                                                cx
-                                            ))),
-
-                                        BottomDockLayout::LeftAligned => div()
-                                            .flex()
-                                            .flex_row()
-                                            .h_full()
-                                            .child(
-                                                div()
-                                                    .flex()
-                                                    .flex_col()
-                                                    .flex_1()
-                                                    .h_full()
-                                                    .child(
-                                                        div()
-                                                            .flex()
-                                                            .flex_row()
-                                                            .flex_1()
-                                                            .children(self.render_dock(DockPosition::Left, &self.left_dock, window, cx))
-
-                                                            .child(
-                                                                div()
-                                                                    .flex()
-                                                                    .flex_col()
-                                                                    .flex_1()
-                                                                    .overflow_hidden()
-                                                                    .child(
-                                                                        h_flex()
-                                                                            .flex_1()
-                                                                            .when_some(paddings.0, |this, p| this.child(p.border_r_1()))
-                                                                            .child(self.center.render(
-                                                                                self.zoomed.as_ref(),
-                                                                                &PaneRenderContext {
-                                                                                    follower_states:
-                                                                                        &self.follower_states,
-                                                                                    active_call: self.active_call(),
-                                                                                    active_pane: &self.active_pane,
-                                                                                    app_state: &self.app_state,
-                                                                                    project: &self.project,
-                                                                                    workspace: &self.weak_self,
-                                                                                },
-                                                                                window,
-                                                                                cx,
-                                                                            ))
-                                                                            .when_some(paddings.1, |this, p| this.child(p.border_l_1())),
-                                                                    )
-                                                            )
-
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .w_full()
-                                                            .children(self.render_dock(DockPosition::Bottom, &self.bottom_dock, window, cx))
-                                                    ),
-                                            )
-                                            .children(self.render_dock(
-                                                DockPosition::Right,
-                                                &self.right_dock,
-                                                window,
-                                                cx,
-                                            )),
-                                        BottomDockLayout::RightAligned => div()
-                                            .flex()
-                                            .flex_row()
-                                            .h_full()
-                                            .children(self.render_dock(
-                                                DockPosition::Left,
-                                                &self.left_dock,
-                                                window,
-                                                cx,
-                                            ))
-
-                                            .child(
-                                                div()
-                                                    .flex()
-                                                    .flex_col()
-                                                    .flex_1()
-                                                    .h_full()
-                                                    .child(
-                                                        div()
-                                                            .flex()
-                                                            .flex_row()
-                                                            .flex_1()
-                                                            .child(
-                                                                div()
-                                                                    .flex()
-                                                                    .flex_col()
-                                                                    .flex_1()
-                                                                    .overflow_hidden()
-                                                                    .child(
-                                                                        h_flex()
-                                                                            .flex_1()
-                                                                            .when_some(paddings.0, |this, p| this.child(p.border_r_1()))
-                                                                            .child(self.center.render(
-                                                                                self.zoomed.as_ref(),
-                                                                                &PaneRenderContext {
-                                                                                    follower_states:
-                                                                                        &self.follower_states,
-                                                                                    active_call: self.active_call(),
-                                                                                    active_pane: &self.active_pane,
-                                                                                    app_state: &self.app_state,
-                                                                                    project: &self.project,
-                                                                                    workspace: &self.weak_self,
-                                                                                },
-                                                                                window,
-                                                                                cx,
-                                                                            ))
-                                                                            .when_some(paddings.1, |this, p| this.child(p.border_l_1())),
-                                                                    )
-                                                            )
-
-                                                            .children(self.render_dock(DockPosition::Right, &self.right_dock, window, cx))
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .w_full()
-                                                            .children(self.render_dock(DockPosition::Bottom, &self.bottom_dock, window, cx))
-                                                    ),
-                                            ),
-                                        BottomDockLayout::Contained => div()
-                                            .flex()
-                                            .flex_row()
-                                            .h_full()
-                                            .children(self.render_dock(
-                                                DockPosition::Left,
-                                                &self.left_dock,
-                                                window,
-                                                cx,
-                                            ))
-
-                                            .child(
-                                                div()
-                                                    .flex()
-                                                    .flex_col()
-                                                    .flex_1()
-                                                    .overflow_hidden()
-                                                    .child(
-                                                        h_flex()
-                                                            .flex_1()
-                                                            .when_some(paddings.0, |this, p| {
-                                                                this.child(p.border_r_1())
-                                                            })
-                                                            .child(self.center.render(
-                                                                self.zoomed.as_ref(),
-                                                                &PaneRenderContext {
-                                                                    follower_states:
-                                                                        &self.follower_states,
-                                                                    active_call: self.active_call(),
-                                                                    active_pane: &self.active_pane,
-                                                                    app_state: &self.app_state,
-                                                                    project: &self.project,
-                                                                    workspace: &self.weak_self,
-                                                                },
-                                                                window,
-                                                                cx,
-                                                            ))
-                                                            .when_some(paddings.1, |this, p| {
-                                                                this.child(p.border_l_1())
-                                                            }),
-                                                    )
-                                                    .children(self.render_dock(
-                                                        DockPosition::Bottom,
-                                                        &self.bottom_dock,
+                                                    );
+                                                }
+                                                DockPosition::Bottom => {
+                                                    workspace.resize_bottom_dock(
+                                                        workspace.bounds.bottom()
+                                                            - e.event.position.y,
                                                         window,
                                                         cx,
-                                                    )),
-                                            )
-
-                                            .children(self.render_dock(
-                                                DockPosition::Right,
-                                                &self.right_dock,
-                                                window,
-                                                cx,
-                                            )),
-                                    }
-                                })
-                                .children(self.zoomed.as_ref().and_then(|view| {
-                                    let zoomed_view = view.upgrade()?;
-                                    let div = div()
-                                        .occlude()
-                                        .absolute()
-                                        .overflow_hidden()
-                                        .border_color(colors.border)
-                                        .bg(colors.background)
-                                        .child(zoomed_view)
-                                        .inset_0()
-                                        .shadow_lg();
-
-                                    if !WorkspaceSettings::get_global(cx).zoomed_padding {
-                                       return Some(div);
-                                    }
-
-                                    Some(match self.zoomed_position {
-                                        Some(DockPosition::Left) => div.right_2().border_r_1(),
-                                        Some(DockPosition::Right) => div.left_2().border_l_1(),
-                                        Some(DockPosition::Bottom) => div.top_2().border_t_1(),
-                                        None => {
-                                            div.top_2().bottom_2().left_2().right_2().border_1()
+                                                    );
+                                                }
+                                            };
+                                            workspace.serialize_workspace(window, cx);
                                         }
-                                    })
-                                }))
-                                .children(self.render_notifications(window, cx)),
-                        )
-                        .when(self.status_bar_visible(cx), |parent| {
-                            parent.child(self.status_bar.clone())
-                        })
-                        .child(self.toast_layer.clone()),
-                )
+                                    },
+                                ))
+                            })
+                            .child({
+                                match bottom_dock_layout {
+                                    BottomDockLayout::Full => div()
+                                        .flex()
+                                        .flex_col()
+                                        .h_full()
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_row()
+                                                .flex_1()
+                                                .overflow_hidden()
+                                                .children(self.render_dock(
+                                                    DockPosition::Left,
+                                                    &self.left_dock,
+                                                    window,
+                                                    cx,
+                                                ))
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .flex_col()
+                                                        .flex_1()
+                                                        .overflow_hidden()
+                                                        .child(
+                                                            h_flex()
+                                                                .flex_1()
+                                                                .when_some(paddings.0, |this, p| {
+                                                                    this.child(p.border_r_1())
+                                                                })
+                                                                .child(self.center.render(
+                                                                    self.zoomed.as_ref(),
+                                                                    &pane_render_context,
+                                                                    window,
+                                                                    cx,
+                                                                ))
+                                                                .when_some(
+                                                                    paddings.1,
+                                                                    |this, p| {
+                                                                        this.child(p.border_l_1())
+                                                                    },
+                                                                ),
+                                                        ),
+                                                )
+                                                .children(self.render_dock(
+                                                    DockPosition::Right,
+                                                    &self.right_dock,
+                                                    window,
+                                                    cx,
+                                                )),
+                                        )
+                                        .child(div().w_full().children(self.render_dock(
+                                            DockPosition::Bottom,
+                                            &self.bottom_dock,
+                                            window,
+                                            cx,
+                                        ))),
+
+                                    BottomDockLayout::LeftAligned => div()
+                                        .flex()
+                                        .flex_row()
+                                        .h_full()
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_col()
+                                                .flex_1()
+                                                .h_full()
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .flex_row()
+                                                        .flex_1()
+                                                        .children(self.render_dock(
+                                                            DockPosition::Left,
+                                                            &self.left_dock,
+                                                            window,
+                                                            cx,
+                                                        ))
+                                                        .child(
+                                                            div()
+                                                                .flex()
+                                                                .flex_col()
+                                                                .flex_1()
+                                                                .overflow_hidden()
+                                                                .child(
+                                                                    h_flex()
+                                                                        .flex_1()
+                                                                        .when_some(
+                                                                            paddings.0,
+                                                                            |this, p| {
+                                                                                this.child(
+                                                                                    p.border_r_1(),
+                                                                                )
+                                                                            },
+                                                                        )
+                                                                        .child(self.center.render(
+                                                                            self.zoomed.as_ref(),
+                                                                            &pane_render_context,
+                                                                            window,
+                                                                            cx,
+                                                                        ))
+                                                                        .when_some(
+                                                                            paddings.1,
+                                                                            |this, p| {
+                                                                                this.child(
+                                                                                    p.border_l_1(),
+                                                                                )
+                                                                            },
+                                                                        ),
+                                                                ),
+                                                        ),
+                                                )
+                                                .child(div().w_full().children(self.render_dock(
+                                                    DockPosition::Bottom,
+                                                    &self.bottom_dock,
+                                                    window,
+                                                    cx,
+                                                ))),
+                                        )
+                                        .children(self.render_dock(
+                                            DockPosition::Right,
+                                            &self.right_dock,
+                                            window,
+                                            cx,
+                                        )),
+                                    BottomDockLayout::RightAligned => div()
+                                        .flex()
+                                        .flex_row()
+                                        .h_full()
+                                        .children(self.render_dock(
+                                            DockPosition::Left,
+                                            &self.left_dock,
+                                            window,
+                                            cx,
+                                        ))
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_col()
+                                                .flex_1()
+                                                .h_full()
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .flex_row()
+                                                        .flex_1()
+                                                        .child(
+                                                            div()
+                                                                .flex()
+                                                                .flex_col()
+                                                                .flex_1()
+                                                                .overflow_hidden()
+                                                                .child(
+                                                                    h_flex()
+                                                                        .flex_1()
+                                                                        .when_some(
+                                                                            paddings.0,
+                                                                            |this, p| {
+                                                                                this.child(
+                                                                                    p.border_r_1(),
+                                                                                )
+                                                                            },
+                                                                        )
+                                                                        .child(self.center.render(
+                                                                            self.zoomed.as_ref(),
+                                                                            &pane_render_context,
+                                                                            window,
+                                                                            cx,
+                                                                        ))
+                                                                        .when_some(
+                                                                            paddings.1,
+                                                                            |this, p| {
+                                                                                this.child(
+                                                                                    p.border_l_1(),
+                                                                                )
+                                                                            },
+                                                                        ),
+                                                                ),
+                                                        )
+                                                        .children(self.render_dock(
+                                                            DockPosition::Right,
+                                                            &self.right_dock,
+                                                            window,
+                                                            cx,
+                                                        )),
+                                                )
+                                                .child(div().w_full().children(self.render_dock(
+                                                    DockPosition::Bottom,
+                                                    &self.bottom_dock,
+                                                    window,
+                                                    cx,
+                                                ))),
+                                        ),
+                                    BottomDockLayout::Contained => div()
+                                        .flex()
+                                        .flex_row()
+                                        .h_full()
+                                        .children(self.render_dock(
+                                            DockPosition::Left,
+                                            &self.left_dock,
+                                            window,
+                                            cx,
+                                        ))
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_col()
+                                                .flex_1()
+                                                .overflow_hidden()
+                                                .child(
+                                                    h_flex()
+                                                        .flex_1()
+                                                        .when_some(paddings.0, |this, p| {
+                                                            this.child(p.border_r_1())
+                                                        })
+                                                        .child(self.center.render(
+                                                            self.zoomed.as_ref(),
+                                                            &pane_render_context,
+                                                            window,
+                                                            cx,
+                                                        ))
+                                                        .when_some(paddings.1, |this, p| {
+                                                            this.child(p.border_l_1())
+                                                        }),
+                                                )
+                                                .children(self.render_dock(
+                                                    DockPosition::Bottom,
+                                                    &self.bottom_dock,
+                                                    window,
+                                                    cx,
+                                                )),
+                                        )
+                                        .children(self.render_dock(
+                                            DockPosition::Right,
+                                            &self.right_dock,
+                                            window,
+                                            cx,
+                                        )),
+                                }
+                            })
+                            .children(self.zoomed.as_ref().and_then(|view| {
+                                let zoomed_view = view.upgrade()?;
+                                let div = div()
+                                    .occlude()
+                                    .absolute()
+                                    .overflow_hidden()
+                                    .border_color(colors.border)
+                                    .bg(colors.background)
+                                    .child(zoomed_view)
+                                    .inset_0()
+                                    .shadow_lg();
+
+                                if !WorkspaceSettings::get_global(cx).zoomed_padding {
+                                    return Some(div);
+                                }
+
+                                Some(match self.zoomed_position {
+                                    Some(DockPosition::Left) => div.right_2().border_r_1(),
+                                    Some(DockPosition::Right) => div.left_2().border_l_1(),
+                                    Some(DockPosition::Bottom) => div.top_2().border_t_1(),
+                                    None => div.top_2().bottom_2().left_2().right_2().border_1(),
+                                })
+                            }))
+                            .children(self.render_notifications(window, cx)),
+                    )
+                    .when(self.status_bar_visible(cx), |parent| {
+                        parent.child(self.status_bar.clone())
+                    })
+                    .child(self.toast_layer.clone()),
+            )
     }
 }
 
@@ -11266,6 +11299,49 @@ mod tests {
         let task = workspace.update_in(cx, |w, window, cx| {
             w.prepare_to_close(CloseIntent::CloseWindow, window, cx)
         });
+        assert!(task.await.unwrap());
+    }
+
+    #[gpui::test]
+    async fn test_close_window_with_failing_serialization(cx: &mut TestAppContext) {
+        init_test(cx);
+
+        cx.update(|cx| {
+            register_serializable_item::<TestItem>(cx);
+        });
+
+        let fs = FakeFs::new(cx.executor());
+        let project = Project::test(fs, None, cx).await;
+        let (workspace, cx) =
+            cx.add_window_view(|window, cx| Workspace::test_new(project.clone(), window, cx));
+
+        let item = cx.new(|cx| {
+            TestItem::new(cx).with_dirty(true).with_serialize(|| {
+                Some(Task::ready(Err(anyhow::anyhow!(
+                    "FOREIGN KEY constraint failed"
+                ))))
+            })
+        });
+        workspace.update_in(cx, |w, window, cx| {
+            w.add_item_to_active_pane(Box::new(item.clone()), None, true, window, cx);
+        });
+
+        let task = workspace.update_in(cx, |w, window, cx| {
+            w.prepare_to_close(CloseIntent::CloseWindow, window, cx)
+        });
+        cx.executor().run_until_parked();
+
+        // The failing serialization must not short-circuit the close; a
+        // save/discard prompt must be shown for the dirty scratch item.
+        assert!(
+            cx.has_pending_prompt(),
+            "a save/discard prompt should be shown for the dirty scratch item \
+             when its serialization fails"
+        );
+        cx.simulate_prompt_answer("Don't Save");
+        cx.executor().run_until_parked();
+
+        // Preparing to close succeeds, even though serialization failed.
         assert!(task.await.unwrap());
     }
 
@@ -15230,5 +15306,52 @@ mod tests {
                 "Both panels should still be in the right dock"
             );
         });
+    }
+
+    #[gpui::test]
+    async fn test_most_recent_active_path_skips_read_only_paths(cx: &mut TestAppContext) {
+        init_test(cx);
+
+        let fs = FakeFs::new(cx.executor());
+        fs.insert_tree(
+            path!("/project"),
+            json!({
+                "src": { "main.py": "" },
+                ".venv": { "lib": { "dep.py": "" } },
+            }),
+        )
+        .await;
+
+        let project = Project::test(fs.clone(), [path!("/project").as_ref()], cx).await;
+        let (workspace, cx) =
+            cx.add_window_view(|window, cx| Workspace::test_new(project.clone(), window, cx));
+        let worktree_id = project.update(cx, |project, cx| {
+            project.worktrees(cx).next().unwrap().read(cx).id()
+        });
+
+        // Configure .venv as read-only
+        workspace.update_in(cx, |_workspace, _window, cx| {
+            cx.update_global::<SettingsStore, _>(|store, cx| {
+                store
+                    .set_user_settings(r#"{"read_only_files": ["**/.venv/**"]}"#, cx)
+                    .ok();
+            });
+        });
+
+        let item_dep = cx.new(|cx| {
+            TestItem::new(cx).with_project_items(&[TestProjectItem::new_in_worktree(
+                1001,
+                ".venv/lib/dep.py",
+                worktree_id,
+                cx,
+            )])
+        });
+
+        // dep.py is active but matches read_only_files → should be skipped
+        workspace.update_in(cx, |workspace, window, cx| {
+            workspace.add_item_to_active_pane(Box::new(item_dep.clone()), None, true, window, cx);
+        });
+        let path = workspace.read_with(cx, |workspace, cx| workspace.most_recent_active_path(cx));
+        assert_eq!(path, None);
     }
 }

@@ -794,6 +794,8 @@ impl ThreadMetadataStore {
         if let Some(job) = archive_job {
             self.in_flight_archives.insert(thread_id, job);
         }
+
+        cx.emit(ThreadMetadataStoreEvent::ThreadArchived(thread_id));
     }
 
     pub fn unarchive(&mut self, thread_id: ThreadId, cx: &mut Context<Self>) {
@@ -1236,6 +1238,13 @@ impl ThreadMetadataStore {
 }
 
 impl Global for ThreadMetadataStore {}
+
+#[derive(Clone, Debug)]
+pub enum ThreadMetadataStoreEvent {
+    ThreadArchived(ThreadId),
+}
+
+impl gpui::EventEmitter<ThreadMetadataStoreEvent> for ThreadMetadataStore {}
 
 struct ThreadMetadataDb(ThreadSafeConnection);
 
@@ -3544,7 +3553,8 @@ mod tests {
             .unwrap()()
         .unwrap();
 
-        // Run all migrations (0-7). sqlez skips 0-6 and runs only migration 7.
+        // Run all current migrations. sqlez skips the already-applied ones and
+        // runs the remaining migrations.
         run_thread_metadata_migrations(&connection);
 
         // All 3 rows should survive with non-NULL thread_ids.

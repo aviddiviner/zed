@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use editor::Editor;
-use fuzzy::StringMatchCandidate;
+use fuzzy_nucleo::StringMatchCandidate;
 
 use collections::HashSet;
 use git::repository::Branch;
@@ -737,11 +737,11 @@ impl PickerDelegate for BranchListDelegate {
                     .enumerate()
                     .map(|(ix, branch)| StringMatchCandidate::new(ix, branch.name()))
                     .collect::<Vec<StringMatchCandidate>>();
-                let mut matches: Vec<Entry> = fuzzy::match_strings(
+                let mut matches: Vec<Entry> = fuzzy_nucleo::match_strings_async(
                     &candidates,
                     &query,
-                    true,
-                    true,
+                    fuzzy_nucleo::Case::Smart,
+                    fuzzy_nucleo::LengthPenalty::On,
                     10000,
                     &Default::default(),
                     cx.background_executor().clone(),
@@ -1339,7 +1339,7 @@ impl PickerDelegate for BranchListDelegate {
                             this.child(button)
                         })
                         .child(
-                            Button::new("branch-from-default", "Create")
+                            Button::new("create-new-branch", "Create")
                                 .key_binding(
                                     KeyBinding::for_action_in(&menu::Confirm, &focus_handle, cx)
                                         .map(|kb| kb.size(rems_from_px(12.))),
@@ -1355,7 +1355,7 @@ impl PickerDelegate for BranchListDelegate {
                 footer_container()
                     .justify_end()
                     .child(
-                        Button::new("branch-from-default", "Confirm")
+                        Button::new("confirm-create-remote", "Confirm")
                             .key_binding(
                                 KeyBinding::for_action_in(&menu::Confirm, &focus_handle, cx)
                                     .map(|kb| kb.size(rems_from_px(12.))),

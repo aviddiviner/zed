@@ -24,7 +24,7 @@ use crate::DEFAULT_THREAD_TITLE;
 use crate::ExpandMessageEditor;
 use crate::ManageProfiles;
 use crate::agent_connection_store::AgentConnectionStore;
-use crate::thread_metadata_store::{ThreadId, ThreadMetadataStore};
+use crate::thread_metadata_store::{ThreadId, ThreadMetadataStore, ThreadMetadataStoreEvent};
 use crate::{
     AddContextServer, AgentDiffPane, ConversationView, CopyThreadToClipboard, Follow,
     InlineAssistant, LoadThreadFromClipboard, NewThread, OpenActiveThreadAsMarkdown, OpenAgentDiff,
@@ -39,14 +39,13 @@ use crate::{
 use agent_settings::AgentSettings;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-
 use collections::HashMap;
 use editor::{Editor, MultiBuffer};
 use extension::ExtensionEvents;
 use extension_host::ExtensionStore;
 use fs::Fs;
 use gpui::{
-    Action, Animation, AnimationExt, AnyElement, App, AsyncWindowContext, ClipboardItem, Corner,
+    Action, Anchor, Animation, AnimationExt, AnyElement, App, AsyncWindowContext, ClipboardItem,
     Entity, EventEmitter, ExternalPaths, FocusHandle, Focusable, KeyContext, Pixels, Subscription,
     Task, UpdateGlobal, WeakEntity, prelude::*, pulsating_between,
 };
@@ -240,6 +239,7 @@ pub fn init(cx: &mut App) {
                         });
                     }
                 })
+
                 .register_action(|workspace, _: &ResetAgentZoom, window, cx| {
                     if let Some(panel) = workspace.panel::<AgentPanel>(cx) {
                         panel.update(cx, |panel, cx| {
@@ -669,12 +669,14 @@ pub struct AgentPanel {
     _project_subscription: Subscription,
     zoomed: bool,
     pending_serialization: Option<Task<Result<()>>>,
+
     selected_agent: Agent,
     _thread_view_subscription: Option<Subscription>,
     _active_thread_focus_subscription: Option<Subscription>,
     show_trust_workspace_message: bool,
     _base_view_observation: Option<Subscription>,
     _draft_editor_observation: Option<Subscription>,
+    _thread_metadata_store_subscription: Subscription,
 }
 
 impl AgentPanel {
@@ -934,6 +936,7 @@ impl AgentPanel {
 
         let base_view = BaseView::Uninitialized;
 
+
         // Subscribe to extension events to sync agent servers when extensions change
         let extension_subscription = if let Some(extension_events) = ExtensionEvents::try_global(cx)
         {
@@ -971,6 +974,17 @@ impl AgentPanel {
                 }
                 _ => {}
             });
+
+        let _thread_metadata_store_subscription = cx.subscribe(
+            &ThreadMetadataStore::global(cx),
+            |this, _store, event, cx| {
+                let ThreadMetadataStoreEvent::ThreadArchived(thread_id) = event;
+                if this.retained_threads.remove(thread_id).is_some() {
+                    cx.notify();
+                }
+            },
+        );
+
         let mut panel = Self {
             workspace_id,
             base_view,
@@ -994,13 +1008,16 @@ impl AgentPanel {
             _project_subscription,
             zoomed: false,
             pending_serialization: None,
+
             thread_store,
             selected_agent: Agent::default(),
             _thread_view_subscription: None,
             _active_thread_focus_subscription: None,
             show_trust_workspace_message: false,
+
             _base_view_observation: None,
             _draft_editor_observation: None,
+            _thread_metadata_store_subscription,
         };
 
         // Initial sync of agent servers from extensions
@@ -1447,6 +1464,7 @@ impl AgentPanel {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        window.focus(&self.focus_handle, cx);
         self.agent_panel_menu_handle.toggle(window, cx);
     }
 
@@ -2842,7 +2860,7 @@ impl AgentPanel {
                     }
                 },
             )
-            .anchor(Corner::TopRight)
+            .anchor(Anchor::TopRight)
             .with_handle(self.agent_panel_menu_handle.clone())
             .menu({
                 move |window, cx| {
@@ -3241,7 +3259,7 @@ impl AgentPanel {
                     move |window, cx| builder(window, cx)
                 })
                 .with_handle(self.new_thread_menu_handle.clone())
-                .anchor(Corner::TopLeft)
+                .anchor(Anchor::TopLeft)
                 .offset(gpui::Point {
                     x: px(1.0),
                     y: px(1.0),
@@ -3282,7 +3300,7 @@ impl AgentPanel {
                         }
                     },
                 )
-                .anchor(Corner::TopRight)
+                .anchor(Anchor::TopRight)
                 .with_handle(self.new_thread_menu_handle.clone())
                 .menu(move |window, cx| new_thread_menu_builder(window, cx));
 
@@ -3323,6 +3341,7 @@ impl AgentPanel {
             .border_color(cx.theme().colors().border)
             .child(toolbar_content)
     }
+
 
     fn render_drag_target(&self, cx: &Context<Self>) -> Div {
         let is_local = self.project.read(cx).is_local();
@@ -3482,6 +3501,7 @@ impl Render for AgentPanel {
             }))
             .child(self.render_toolbar(window, cx))
             .children(self.render_workspace_trust_message(cx))
+
             .map(|parent| match self.visible_surface() {
                 VisibleSurface::Uninitialized => parent,
                 VisibleSurface::AgentThread(conversation_view) => parent
@@ -3554,6 +3574,7 @@ impl rules_library::InlineAssistDelegate for PromptLibraryInlineAssist {
         workspace.focus_panel::<AgentPanel>(window, cx).is_some()
     }
 }
+
 
 /// Test-only helper methods
 #[cfg(any(test, feature = "test-support"))]

@@ -11,7 +11,7 @@ use feature_flags::AcpBetaFeatureFlag;
 
 use crate::message_editor::SharedSessionCapabilities;
 
-use gpui::{Corner, List};
+use gpui::List;
 use heapless::Vec as ArrayVec;
 use language_model::{LanguageModelEffortLevel, Speed};
 use settings::{SidebarSide, update_settings_file};
@@ -4012,7 +4012,7 @@ impl ThreadView {
                 x: px(0.0),
                 y: px(-2.0),
             })
-            .anchor(Corner::BottomLeft)
+            .anchor(gpui::Anchor::BottomLeft)
     }
 
     fn render_send_button(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -4116,7 +4116,7 @@ impl ThreadView {
                     }
                 },
             )
-            .anchor(Corner::BottomLeft)
+            .anchor(gpui::Anchor::BottomLeft)
             .with_handle(self.add_context_menu_handle.clone())
             .offset(gpui::Point {
                 x: px(0.0),
@@ -5744,15 +5744,15 @@ impl ThreadView {
                     let this = entity.read(cx);
                     let is_at_top = this.list_state.logical_scroll_top().item_ix == 0;
 
-                    let has_selection = this
-                        .thread
-                        .read(cx)
-                        .entries()
-                        .get(entry_ix)
-                        .and_then(|entry| match &entry {
-                            AgentThreadEntry::AssistantMessage(msg) => Some(&msg.chunks),
-                            _ => None,
-                        })
+                    let chunks =
+                        this.thread.read(cx).entries().get(entry_ix).and_then(
+                            |entry| match &entry {
+                                AgentThreadEntry::AssistantMessage(msg) => Some(&msg.chunks),
+                                _ => None,
+                            },
+                        );
+
+                    let has_selection = chunks
                         .map(|chunks| {
                             chunks.iter().any(|chunk| {
                                 let md = match chunk {
@@ -5763,6 +5763,16 @@ impl ThreadView {
                             })
                         })
                         .unwrap_or(false);
+
+                    let context_menu_link = chunks.and_then(|chunks| {
+                        chunks.iter().find_map(|chunk| {
+                            let md = match chunk {
+                                AssistantMessageChunk::Message { block } => block.markdown(),
+                                AssistantMessageChunk::Thought { block } => block.markdown(),
+                            };
+                            md.and_then(|m| m.read(cx).context_menu_link().cloned())
+                        })
+                    });
 
                     let copy_this_agent_response =
                         ContextMenuEntry::new("Copy This Agent Response").handler({
@@ -5815,6 +5825,12 @@ impl ThreadView {
                         });
 
                     menu.when_some(focus, |menu, focus| menu.context(focus))
+                        .when_some(context_menu_link, |menu, url| {
+                            menu.entry("Copy Link", None, move |_, cx| {
+                                cx.write_to_clipboard(ClipboardItem::new_string(url.to_string()));
+                            })
+                            .separator()
+                        })
                         .action_disabled_when(
                             !has_selection,
                             "Copy Selection",
@@ -7010,8 +7026,8 @@ impl ThreadView {
 
         PopoverMenu::new(("permission-granularity", entry_ix))
             .with_handle(permission_dropdown_handle.clone())
-            .anchor(Corner::TopRight)
-            .attach(Corner::BottomRight)
+            .anchor(gpui::Anchor::TopRight)
+            .attach(gpui::Anchor::BottomRight)
             .trigger(
                 Button::new(("granularity-trigger", entry_ix), current_label)
                     .end_icon(

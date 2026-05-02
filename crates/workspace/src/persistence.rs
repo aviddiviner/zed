@@ -21,6 +21,7 @@ use db::{
 };
 use gpui::{Axis, Bounds, Task, WindowBounds, WindowId, point, size};
 use project::{
+    bookmark_store::SerializedBookmark,
     debugger::breakpoint_store::{BreakpointState, SourceBreakpoint},
     trusted_worktrees::{DbTrustedPaths, RemoteHostLocation},
 };
@@ -380,6 +381,39 @@ pub async fn write_default_dock_state(
     kvp.write_kvp(DEFAULT_DOCK_STATE_KEY.to_string(), json_str)
         .await?;
     Ok(())
+}
+
+#[derive(Debug)]
+pub struct Bookmark {
+    pub row: u32,
+}
+
+impl sqlez::bindable::StaticColumnCount for Bookmark {
+    fn column_count() -> usize {
+        // row
+        1
+    }
+}
+
+impl sqlez::bindable::Bind for Bookmark {
+    fn bind(
+        &self,
+        statement: &sqlez::statement::Statement,
+        start_index: i32,
+    ) -> anyhow::Result<i32> {
+        statement.bind(&self.row, start_index)
+    }
+}
+
+impl Column for Bookmark {
+    fn column(statement: &mut Statement, start_index: i32) -> Result<(Self, i32)> {
+        let row = statement
+            .column_int(start_index)
+            .with_context(|| format!("Failed to read bookmark at index {start_index}"))?
+            as u32;
+
+        Ok((Bookmark { row }, start_index + 1))
+    }
 }
 
 #[derive(Debug)]
@@ -988,6 +1022,16 @@ impl Domain for WorkspaceDb {
         sql!(
             ALTER TABLE remote_connections ADD COLUMN remote_env TEXT;
         ),
+        sql!(
+            CREATE TABLE bookmarks (
+                workspace_id INTEGER NOT NULL,
+                path TEXT NOT NULL,
+                row INTEGER NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(workspace_id)
+                ON DELETE CASCADE
+                ON UPDATE CASCADE
+            );
+        ),
     ];
 
     // Allow recovering from bad migration that was initially shipped to nightly
@@ -1122,6 +1166,7 @@ impl WorkspaceDb {
             display,
             docks,
             session_id: None,
+            bookmarks: self.bookmarks(workspace_id),
             breakpoints: self.breakpoints(workspace_id),
             window_id,
             user_toolchains: self.user_toolchains(workspace_id, remote_connection_id),
@@ -1212,10 +1257,45 @@ impl WorkspaceDb {
             display,
             docks,
             session_id: None,
+            bookmarks: self.bookmarks(workspace_id),
             breakpoints: self.breakpoints(workspace_id),
             window_id,
             user_toolchains: self.user_toolchains(workspace_id, remote_connection_id),
         })
+    }
+
+    fn bookmarks(&self, workspace_id: WorkspaceId) -> BTreeMap<Arc<Path>, Vec<SerializedBookmark>> {
+        let bookmarks: Result<Vec<(PathBuf, Bookmark)>> = self
+            .select_bound(sql! {
+                SELECT path, row
+                FROM bookmarks
+                WHERE workspace_id = ?
+                ORDER BY path, row
+            })
+            .and_then(|mut prepared_statement| (prepared_statement)(workspace_id));
+
+        match bookmarks {
+            Ok(bookmarks) => {
+                if bookmarks.is_empty() {
+                    log::debug!("Bookmarks are empty after querying database for them");
+                }
+
+                let mut map: BTreeMap<_, Vec<_>> = BTreeMap::default();
+
+                for (path, bookmark) in bookmarks {
+                    let path: Arc<Path> = path.into();
+                    map.entry(path.clone())
+                        .or_default()
+                        .push(SerializedBookmark(bookmark.row))
+                }
+
+                map
+            }
+            Err(e) => {
+                log::error!("Failed to load bookmarks: {}", e);
+                BTreeMap::default()
+            }
+        }
     }
 
     fn breakpoints(&self, workspace_id: WorkspaceId) -> BTreeMap<Arc<Path>, Vec<SourceBreakpoint>> {
@@ -1358,6 +1438,21 @@ impl WorkspaceDb {
                     DELETE FROM pane_groups WHERE workspace_id = ?1;
                     DELETE FROM panes WHERE workspace_id = ?1;))?(workspace.id)
                     .context("Clearing old panes")?;
+
+                conn.exec_bound(
+                    sql!(
+                        DELETE FROM bookmarks WHERE workspace_id = ?1;
+                    )
+                )?(workspace.id).context("Clearing old bookmarks")?;
+
+                for (path, bookmarks) in workspace.bookmarks {
+                    for bookmark in bookmarks {
+                        conn.exec_bound(sql!(
+                            INSERT INTO bookmarks (workspace_id, path, row)
+                            VALUES (?1, ?2, ?3);
+                        ))?((workspace.id, path.as_ref(), bookmark.0)).context("Inserting bookmark")?;
+                    }
+                }
 
                 conn.exec_bound(
                     sql!(
@@ -2707,6 +2802,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: {
                 let mut map = collections::BTreeMap::default();
                 map.insert(
@@ -2862,6 +2958,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: {
                 let mut map = collections::BTreeMap::default();
                 map.insert(
@@ -2910,6 +3007,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: collections::BTreeMap::default(),
             session_id: None,
             window_id: None,
@@ -3008,6 +3106,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: None,
             window_id: None,
@@ -3023,6 +3122,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: None,
             window_id: None,
@@ -3127,6 +3227,7 @@ mod tests {
             location: SerializedWorkspaceLocation::Local,
             center_group,
             window_bounds: Default::default(),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             display: Default::default(),
             docks: Default::default(),
@@ -3161,6 +3262,7 @@ mod tests {
             location: SerializedWorkspaceLocation::Local,
             center_group: Default::default(),
             window_bounds: Default::default(),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             display: Default::default(),
             docks: Default::default(),
@@ -3179,6 +3281,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: None,
             window_id: Some(2),
@@ -3218,6 +3321,7 @@ mod tests {
             location: SerializedWorkspaceLocation::Local,
             center_group: Default::default(),
             window_bounds: Default::default(),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             display: Default::default(),
             docks: Default::default(),
@@ -3259,6 +3363,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: Some("session-id-1".to_owned()),
             window_id: Some(10),
@@ -3274,6 +3379,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: Some("session-id-1".to_owned()),
             window_id: Some(20),
@@ -3289,6 +3395,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: Some("session-id-2".to_owned()),
             window_id: Some(30),
@@ -3304,6 +3411,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: None,
             window_id: None,
@@ -3330,6 +3438,7 @@ mod tests {
             display: Default::default(),
             docks: Default::default(),
             centered_layout: false,
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             session_id: Some("session-id-2".to_owned()),
             window_id: Some(50),
@@ -3342,6 +3451,7 @@ mod tests {
             location: SerializedWorkspaceLocation::Local,
             center_group: Default::default(),
             window_bounds: Default::default(),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             display: Default::default(),
             docks: Default::default(),
@@ -3401,6 +3511,7 @@ mod tests {
             window_bounds: Default::default(),
             display: Default::default(),
             docks: Default::default(),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             centered_layout: false,
             session_id: None,
@@ -3444,6 +3555,7 @@ mod tests {
             docks: Default::default(),
             centered_layout: false,
             session_id: Some("one-session".to_owned()),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             window_id: Some(window_id),
             user_toolchains: Default::default(),
@@ -3539,6 +3651,7 @@ mod tests {
             window_bounds: Default::default(),
             display: Default::default(),
             docks: Default::default(),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             centered_layout: false,
             session_id: session_id.map(|s| s.to_owned()),
@@ -3777,6 +3890,7 @@ mod tests {
             docks: Default::default(),
             centered_layout: false,
             session_id: Some("one-session".to_owned()),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             window_id: Some(window_id),
             user_toolchains: Default::default(),
@@ -4136,6 +4250,7 @@ mod tests {
             window_bounds: None,
             display: None,
             docks: Default::default(),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             centered_layout: false,
             session_id: None,
@@ -4214,6 +4329,7 @@ mod tests {
                 docks: Default::default(),
                 centered_layout: false,
                 session_id: Some("test-session".to_owned()),
+                bookmarks: Default::default(),
                 breakpoints: Default::default(),
                 window_id: Some(*window_id),
                 user_toolchains: Default::default(),
@@ -4499,6 +4615,7 @@ mod tests {
             docks: Default::default(),
             centered_layout: false,
             session_id: Some(session_id.clone()),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             window_id: Some(99),
             user_toolchains: Default::default(),
@@ -4594,6 +4711,7 @@ mod tests {
             docks: Default::default(),
             centered_layout: false,
             session_id: Some(session_id.to_owned()),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             window_id: Some(window_id_val),
             user_toolchains: Default::default(),
@@ -4610,6 +4728,7 @@ mod tests {
             docks: Default::default(),
             centered_layout: false,
             session_id: Some(session_id.to_owned()),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             window_id: Some(window_id_val),
             user_toolchains: Default::default(),
@@ -4688,6 +4807,7 @@ mod tests {
             docks: Default::default(),
             centered_layout: false,
             session_id: Some(session_id.clone()),
+            bookmarks: Default::default(),
             breakpoints: Default::default(),
             window_id: Some(88),
             user_toolchains: Default::default(),

@@ -2,6 +2,7 @@ mod application_menu;
 mod title_bar_settings;
 
 use crate::application_menu::{ApplicationMenu, show_menus};
+use arrayvec::ArrayVec;
 use git_ui::worktree_picker::WorktreePicker;
 pub use platform_title_bar::{
     self, DraggedWindowTab, MergeAllWindows, MoveTabToNewWindow, PlatformTitleBar,
@@ -17,7 +18,7 @@ use crate::application_menu::{
 use client::{Client, UserStore, zed_urls};
 
 use gpui::{
-    Action, Animation, AnimationExt, AnyElement, App, Context, Corner, Element, Entity, Focusable,
+    Action, Anchor, Animation, AnimationExt, AnyElement, App, Context, Element, Entity, Focusable,
     InteractiveElement, IntoElement, MouseButton, ParentElement, Render, Styled, Subscription,
     WeakEntity, Window, actions, div, pulsating_between,
 };
@@ -143,7 +144,7 @@ impl Render for TitleBar {
 
         let show_menus = show_menus(cx);
 
-        let mut children = Vec::new();
+        let mut children = <ArrayVec<_, 4>>::new();
 
         let mut project_name = None;
         let mut repository = None;
@@ -430,6 +431,7 @@ impl TitleBar {
             .cloned()
     }
 
+
     pub fn render_restricted_mode(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let has_restricted_worktrees = TrustedWorktrees::try_get_global(cx)
             .map(|trusted_worktrees| {
@@ -559,7 +561,7 @@ impl TitleBar {
                     )
                 },
             )
-            .anchor(gpui::Corner::TopLeft)
+            .anchor(gpui::Anchor::TopLeft)
             .into_any_element()
     }
 
@@ -616,7 +618,7 @@ impl TitleBar {
                     )
                 },
             )
-            .anchor(gpui::Corner::TopLeft)
+            .anchor(gpui::Anchor::TopLeft)
     }
 
     fn render_project_branch(
@@ -722,7 +724,7 @@ impl TitleBar {
                         )
                     },
                 )
-                .anchor(gpui::Corner::TopLeft)
+                .anchor(gpui::Anchor::TopLeft)
         };
 
         let branch_tooltip_label = branch_name.clone();
@@ -772,7 +774,7 @@ impl TitleBar {
                 };
                 Tooltip::with_meta("Branch & Stash", Some(&zed_actions::git::Branch), meta, cx)
             })
-            .anchor(gpui::Corner::TopLeft);
+            .anchor(gpui::Anchor::TopLeft);
 
         Some(
             h_flex()
@@ -875,6 +877,6 @@ impl TitleBar {
                 })
                 .into()
             })
-            .anchor(Corner::TopRight)
+            .anchor(Anchor::TopRight)
     }
 }

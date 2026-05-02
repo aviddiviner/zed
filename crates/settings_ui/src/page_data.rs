@@ -208,6 +208,32 @@ fn general_page(cx: &App) -> SettingsPage {
             }),
         ]
     }
+    fn security_section() -> [SettingsPageItem; 2] {
+        [
+            SettingsPageItem::SectionHeader("Security"),
+            SettingsPageItem::SettingItem(SettingItem {
+                title: "Trust All Projects By Default",
+                description: "When opening Aleph, avoid Restricted Mode by auto-trusting all projects, enabling use of all features without having to give permission to each new project.",
+                field: Box::new(SettingField {
+                    json_path: Some("session.trust_all_projects"),
+                    pick: |settings_content| {
+                        settings_content
+                            .session
+                            .as_ref()
+                            .and_then(|session| session.trust_all_worktrees.as_ref())
+                    },
+                    write: |settings_content, value| {
+                        settings_content
+                            .session
+                            .get_or_insert_default()
+                            .trust_all_worktrees = value;
+                    },
+                }),
+                metadata: None,
+                files: USER,
+            }),
+        ]
+    }
 
     fn workspace_restoration_section() -> [SettingsPageItem; 3] {
         [
@@ -254,6 +280,7 @@ fn general_page(cx: &App) -> SettingsPage {
         items: concat_sections!(
             @vec,
             general_settings_section(cx),
+            security_section(),
             workspace_restoration_section(),
         )
         .into(),
@@ -1665,7 +1692,7 @@ fn editor_page() -> SettingsPage {
         ]
     }
 
-    fn gutter_section() -> [SettingsPageItem; 8] {
+    fn gutter_section() -> [SettingsPageItem; 9] {
         [
             SettingsPageItem::SectionHeader("Gutter"),
             SettingsPageItem::SettingItem(SettingItem {
@@ -1745,6 +1772,29 @@ fn editor_page() -> SettingsPage {
                             .gutter
                             .get_or_insert_default()
                             .breakpoints = value;
+                    },
+                }),
+                metadata: None,
+                files: USER,
+            }),
+            SettingsPageItem::SettingItem(SettingItem {
+                title: "Show Bookmarks",
+                description: "Show bookmarks in the gutter.",
+                field: Box::new(SettingField {
+                    json_path: Some("gutter.bookmarks"),
+                    pick: |settings_content| {
+                        settings_content
+                            .editor
+                            .gutter
+                            .as_ref()
+                            .and_then(|gutter| gutter.bookmarks.as_ref())
+                    },
+                    write: |settings_content, value| {
+                        settings_content
+                            .editor
+                            .gutter
+                            .get_or_insert_default()
+                            .bookmarks = value;
                     },
                 }),
                 metadata: None,
