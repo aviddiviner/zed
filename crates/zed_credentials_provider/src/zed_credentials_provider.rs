@@ -13,14 +13,14 @@ use release_channel::ReleaseChannel;
 /// An environment variable whose presence indicates that the system keychain
 /// should be used in development.
 ///
-/// By default, running Zed in development uses the development credentials
+/// By default, running in development uses the development credentials
 /// provider. Setting this environment variable allows you to interact with the
 /// system keychain (for instance, if you need to test something).
 ///
 /// Only works in development. Setting this environment variable in other
 /// release channels is a no-op.
-static ZED_DEVELOPMENT_USE_KEYCHAIN: LazyLock<bool> = LazyLock::new(|| {
-    std::env::var("ZED_DEVELOPMENT_USE_KEYCHAIN").is_ok_and(|value| !value.is_empty())
+static DEVELOPMENT_USE_KEYCHAIN: LazyLock<bool> = LazyLock::new(|| {
+    std::env::var("ALEPH_DEVELOPMENT_USE_KEYCHAIN").is_ok_and(|value| !value.is_empty())
 });
 
 pub struct ZedCredentialsProvider(pub Arc<dyn CredentialsProvider>);
@@ -49,9 +49,9 @@ fn new(cx: &App) -> Arc<dyn CredentialsProvider> {
             // credentials provider to avoid getting spammed by relentless
             // keychain access prompts.
             //
-            // However, if the `ZED_DEVELOPMENT_USE_KEYCHAIN` environment
+            // However, if the `ALEPH_DEVELOPMENT_USE_KEYCHAIN` environment
             // variable is set, we will use the actual keychain.
-            !*ZED_DEVELOPMENT_USE_KEYCHAIN
+            !*DEVELOPMENT_USE_KEYCHAIN
         }
         Some(ReleaseChannel::Nightly | ReleaseChannel::Preview | ReleaseChannel::Stable) | None => {
             false

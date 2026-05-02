@@ -1,4 +1,4 @@
-//! Provides constructs for the Zed app version and release channel.
+//! Provides constructs for the app version and release channel.
 
 #![deny(missing_docs)]
 
@@ -10,10 +10,15 @@ use semver::Version;
 /// stable | dev | nightly | preview
 pub static RELEASE_CHANNEL_NAME: LazyLock<String> = LazyLock::new(|| {
     if cfg!(debug_assertions) {
-        env::var("ZED_RELEASE_CHANNEL")
-            .unwrap_or_else(|_| include_str!("../../aleph/RELEASE_CHANNEL").trim().to_string())
+        env::var("ZED_RELEASE_CHANNEL").unwrap_or_else(|_| {
+            include_str!("../../aleph/RELEASE_CHANNEL")
+                .trim()
+                .to_string()
+        })
     } else {
-        include_str!("../../aleph/RELEASE_CHANNEL").trim().to_string()
+        include_str!("../../aleph/RELEASE_CHANNEL")
+            .trim()
+            .to_string()
     }
 });
 
@@ -28,14 +33,14 @@ pub static RELEASE_CHANNEL: LazyLock<ReleaseChannel> =
 #[cfg(target_os = "windows")]
 pub fn app_identifier() -> &'static str {
     match *RELEASE_CHANNEL {
-        ReleaseChannel::Dev => "Zed-Editor-Dev",
-        ReleaseChannel::Nightly => "Zed-Editor-Nightly",
-        ReleaseChannel::Preview => "Zed-Editor-Preview",
-        ReleaseChannel::Stable => "Zed-Editor-Stable",
+        ReleaseChannel::Dev => "Aleph-Dev",
+        ReleaseChannel::Nightly => "Aleph-Nightly",
+        ReleaseChannel::Preview => "Aleph-Preview",
+        ReleaseChannel::Stable => "Aleph",
     }
 }
 
-/// The Git commit SHA that Zed was built at.
+/// The Git commit SHA that the app was built at.
 #[derive(Clone, Eq, Debug, PartialEq)]
 pub struct AppCommitSha(String);
 
@@ -75,7 +80,7 @@ struct GlobalAppVersion(Version);
 
 impl Global for GlobalAppVersion {}
 
-/// The version of Zed.
+/// The version of the app.
 pub struct AppVersion;
 
 impl AppVersion {
@@ -118,7 +123,7 @@ impl AppVersion {
     }
 }
 
-/// A Zed release channel.
+/// An Aleph release channel.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum ReleaseChannel {
     /// The development release channel.
@@ -181,10 +186,10 @@ impl ReleaseChannel {
     /// Returns the display name for this [`ReleaseChannel`].
     pub fn display_name(&self) -> &'static str {
         match self {
-            ReleaseChannel::Dev => "Zed Dev",
-            ReleaseChannel::Nightly => "Zed Nightly",
-            ReleaseChannel::Preview => "Zed Preview",
-            ReleaseChannel::Stable => "Zed",
+            ReleaseChannel::Dev => "Aleph Dev",
+            ReleaseChannel::Nightly => "Aleph Nightly",
+            ReleaseChannel::Preview => "Aleph Preview",
+            ReleaseChannel::Stable => "Aleph",
         }
     }
 
@@ -200,13 +205,13 @@ impl ReleaseChannel {
 
     /// Returns the application ID that's used by Wayland as application ID
     /// and WM_CLASS on X11.
-    /// This also has to match the bundle identifier for Zed on macOS.
+    /// This also has to match the bundle identifier on macOS.
     pub fn app_id(&self) -> &'static str {
         match self {
-            ReleaseChannel::Dev => "dev.zed.Zed-Dev",
-            ReleaseChannel::Nightly => "dev.zed.Zed-Nightly",
-            ReleaseChannel::Preview => "dev.zed.Zed-Preview",
-            ReleaseChannel::Stable => "dev.zed.Zed",
+            ReleaseChannel::Dev => "dev.aleph.Aleph-Dev",
+            ReleaseChannel::Nightly => "dev.aleph.Aleph-Nightly",
+            ReleaseChannel::Preview => "dev.aleph.Aleph-Preview",
+            ReleaseChannel::Stable => "dev.aleph.Aleph",
         }
     }
 
