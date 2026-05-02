@@ -609,11 +609,11 @@
     // Whether to show line numbers in the gutter.
     "line_numbers": false,
     // Whether to show runnables buttons in the gutter.
-    "runnables": true,
+    "runnables": false,
     // Whether to show bookmarks in the gutter.
     "bookmarks": true,
     // Whether to show breakpoints in the gutter.
-    "breakpoints": true,
+    "breakpoints": false,
     // Whether to show fold buttons in the gutter.
     "folds": true,
     // Minimum number of characters to reserve space for in the gutter.
