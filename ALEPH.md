@@ -99,7 +99,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [x] Remove AI onboarding upsell banner
 - [x] Rebrand welcome page ("Welcome to Aleph", "Your agentic writing environment")
 - [x] Add title_bar::init for proper titlebar rendering
-- [x] Make title_bar work without `call` crate (ActiveCall now optional via try_global)
+- [x] Make title_bar work without `call` crate (removed all ActiveCall/collab references)
 
 ---
 
@@ -107,7 +107,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 
 **Goal:** The editor feels like a writing tool out of the box.
 
-- [x] Default settings for writing: soft wrap, 18px font, comfortable line height, no line numbers, no scrollbar, no wrap guides
+- [x] Default settings for writing: soft wrap, comfortable line height, no line numbers, no wrap guides (buffer 15px, UI 15px, agent 15/14px)
 - [x] Defaults changed at source (`assets/settings/default.json`, `crates/paths`) — no workaround layers
 - [x] Rewrite agent system prompt for writing collaborator persona
 - [x] Rewrite agent templates (`create_file_prompt`, `diff_judge`) — no more "expert engineer"
@@ -124,7 +124,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [ ] Markdown as the default/primary file type (new files open as .md)
 - [ ] Distraction-free / focus mode (minimal chrome, centered text)
 - [ ] Enable WebSearchTool with independent provider (Brave/SearXNG) — see `notes/zed-gated-features.md`
-- [x] Enable UpdatePlanTool (remove feature flag gate)
+- [x] Enable UpdatePlanTool unconditionally (removed Zed premium feature flag gate)
 - [ ] Clean up default settings file (remove code-specific settings, Zed references, irrelevant options)
 - [x] New app icon (SF Pro ℵ on Aleph Latte `#f7f4e8`, pure black `#000000`)
 - [x] Agent icon: replaced `zed_agent.svg` with geometric aleph letterform
@@ -210,7 +210,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - `node_runtime` still in deps as transitive requirement of `AppState` struct (Phase 2 cleanup)
 - Some deep UI text still references "Zed" (plan chips, URLs, etc.) — cosmetic, low priority
 - JSONC trailing comma squiggles in settings file (file_types glob matches but highlighting still strict JSON in some contexts)
-- WebSearchTool and UpdatePlanTool gated behind Zed cloud/feature flags — see `notes/zed-gated-features.md`
+- WebSearchTool still gated to Zed cloud provider only (`supports_provider` check) — see `notes/zed-gated-features.md`
 
 ### Unresolved Questions
 
@@ -242,10 +242,11 @@ If picking up this work in a new session, read this file first. It contains the 
 | 2026-04-29 | Base on stable release v0.233.10 | Known-good build baseline, branch: `aleph` |
 | 2026-04-29 | Separate config dir `~/.config/aleph/` | Clean slate, no Zed settings interference |
 | 2026-04-29 | Separate data dir `~/Library/Application Support/Aleph/` | No shared database/recent projects with Zed |
-| 2026-04-29 | Make `ActiveCall` optional in title_bar | Use `try_global` instead of `global` — avoids requiring `call::init` |
+| 2026-04-29 | Remove `call` crate from title_bar | Removed all ActiveCall/collab UI — no share button, no calls |
 | 2026-04-29 | Remove Zed cloud provider + Copilot provider | Users bring their own API keys; no Zed subscription dependency |
 | 2026-04-29 | Rewrite agent system prompt for writing | Persona: developmental editor, line editor, brainstormer, researcher, continuity tracker |
 | 2026-04-29 | Remove DiagnosticsTool + TerminalTool from agent | 15 tools remain, all writing-relevant |
 | 2026-04-29 | Settings file created in main.rs | `ensure_settings_file_exists()` — not agent_ui's job |
-| 2026-04-29 | Discovered Zed-gated features | WebSearchTool + UpdatePlanTool only work with Zed cloud. Notes in `notes/zed-gated-features.md` |
+| 2026-04-29 | Discovered Zed-gated features | WebSearchTool only works with Zed cloud. UpdatePlanTool enabled unconditionally. Notes in `notes/zed-gated-features.md` |
 | 2026-04-29 | Configurable system prompt via `~/.config/aleph/system_prompt.hbs` | Hot-reload on every request; full Handlebars template override; future personas layer on top |
+| 2026-05-02 | Merge Zed v1.0.0 | Brings in model updates (Opus 4.7, GPT-5.5, DeepSeek v4), performance fixes, markdown heading sizes, git improvements, editor bug fixes, bookmarks feature. Merge base now at v1.0.0 for future upstream syncs |
