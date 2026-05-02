@@ -243,8 +243,9 @@ impl Telemetry {
             state,
         });
 
-        let (tx, mut rx) = mpsc::unbounded();
-        ::telemetry::init(tx);
+        let (_tx, mut rx) = mpsc::unbounded();
+        // Don't initialize the global telemetry queue — Aleph does not phone home.
+        // ::telemetry::init(tx);
 
         cx.background_spawn({
             let this = Arc::downgrade(&this);
