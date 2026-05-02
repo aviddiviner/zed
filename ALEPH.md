@@ -214,7 +214,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 
 ### Unresolved Questions
 
-- **Window controls appear ~20% larger than Zed's** when running as bare binary. Likely a macOS quirk with unbundled executables (no `.app` bundle / Info.plist). Should resolve once we package as a proper app bundle. Not a code issue — the `rem_size`, `ui_font_size`, and `traffic_light_position` values are all identical to Zed's.
+- **Window controls (traffic lights) are 14pt on macOS Tahoe instead of 12pt.** This is an SDK-linked behavior: macOS reads the `LC_BUILD_VERSION` sdk field from the binary and renders larger buttons for SDK 26+ apps. Not a code bug. When ready to address: either embrace the new size (adjust `TRAFFIC_LIGHT_PADDING` / title bar height) or pin to older SDK via `-Wl,-platform_version,macos,10.15.7,15.0` linker flag. See `crates/ui/src/utils/constants.rs` for the padding constant and `crates/title_bar/build.rs` for the `macos_sdk_26` cfg.
 
 ### Resumption Context
 
