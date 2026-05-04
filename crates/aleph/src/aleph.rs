@@ -477,6 +477,15 @@ fn initialize_pane(
             let breadcrumbs = cx.new(|_| breadcrumbs::Breadcrumbs::new());
             toolbar.add_item(breadcrumbs, window, cx);
 
+            let buffer_search_bar = cx.new(|cx| {
+                search::BufferSearchBar::new(
+                    Some(workspace.project().read(cx).languages().clone()),
+                    window,
+                    cx,
+                )
+            });
+            toolbar.add_item(buffer_search_bar, window, cx);
+
             let writing_toolbar = cx.new(|_| WritingToolbar::new(workspace));
             toolbar.add_item(writing_toolbar, window, cx);
 
@@ -495,6 +504,7 @@ pub fn app_menus(_cx: &mut App) -> Vec<Menu> {
                 MenuItem::action("About Aleph", About),
                 MenuItem::separator(),
                 MenuItem::submenu(Menu::new("Settings").items([
+                    MenuItem::action("Open Settings", zed_actions::OpenSettings),
                     MenuItem::action("Open Settings File", OpenSettingsFile),
                     MenuItem::action("Open Default Settings", OpenDefaultSettings),
                     MenuItem::separator(),
@@ -732,9 +742,7 @@ fn load_default_keymap(cx: &mut App) {
         }
 
         if let Some(asset_path) = base_keymap.asset_path() {
-            if let Ok(mut bindings) =
-                KeymapFile::load_asset_allow_partial_failure(asset_path, cx)
-            {
+            if let Ok(mut bindings) = KeymapFile::load_asset_allow_partial_failure(asset_path, cx) {
                 for binding in &mut bindings {
                     binding.set_meta(KeybindSource::Base.meta());
                 }
