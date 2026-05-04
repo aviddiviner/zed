@@ -9304,40 +9304,6 @@ impl Editor {
             .summary_for_anchor::<Point>(&anchor)
             .row;
 
-        let breakpoint = self
-            .breakpoint_at_row(row, window, cx)
-            .map(|(anchor, bp)| (anchor, Arc::from(bp)));
-
-        let log_breakpoint_msg = if breakpoint.as_ref().is_some_and(|bp| bp.1.message.is_some()) {
-            "Edit Log Breakpoint"
-        } else {
-            "Set Log Breakpoint"
-        };
-
-        let condition_breakpoint_msg = if breakpoint
-            .as_ref()
-            .is_some_and(|bp| bp.1.condition.is_some())
-        {
-            "Edit Condition Breakpoint"
-        } else {
-            "Set Condition Breakpoint"
-        };
-
-        let hit_condition_breakpoint_msg = if breakpoint
-            .as_ref()
-            .is_some_and(|bp| bp.1.hit_condition.is_some())
-        {
-            "Edit Hit Condition Breakpoint"
-        } else {
-            "Set Hit Condition Breakpoint"
-        };
-
-        let set_breakpoint_msg = if breakpoint.as_ref().is_some() {
-            "Unset Breakpoint"
-        } else {
-            "Set Breakpoint"
-        };
-
         let bookmark = self.bookmark_at_row(row, window, cx);
 
         let set_bookmark_msg = if bookmark.as_ref().is_some() {
@@ -9346,118 +9312,26 @@ impl Editor {
             "Add Bookmark"
         };
 
-        let run_to_cursor = window.is_action_available(&RunToCursor, cx);
-
-        let toggle_state_msg = breakpoint.as_ref().map_or(None, |bp| match bp.1.state {
-            BreakpointState::Enabled => Some("Disable"),
-            BreakpointState::Disabled => Some("Enable"),
-        });
-
-        let (anchor, breakpoint) =
-            breakpoint.unwrap_or_else(|| (anchor, Arc::new(Breakpoint::new_standard())));
+        let line_numbers_enabled = self.line_numbers_enabled(cx);
+        let toggle_line_numbers_msg = if line_numbers_enabled {
+            "Hide Line Numbers"
+        } else {
+            "Show Line Numbers"
+        };
 
         ui::ContextMenu::build(window, cx, |menu, _, _cx| {
             menu.on_blur_subscription(Subscription::new(|| {}))
                 .context(focus_handle)
-                .when(run_to_cursor, |this| {
+                .entry(toggle_line_numbers_msg, None, {
                     let weak_editor = weak_editor.clone();
-                    this.entry("Run to Cursor", None, move |window, cx| {
-                        weak_editor
-                            .update(cx, |editor, cx| {
-                                editor.change_selections(
-                                    SelectionEffects::no_scroll(),
-                                    window,
-                                    cx,
-                                    |s| s.select_ranges([Point::new(row, 0)..Point::new(row, 0)]),
-                                );
-                            })
-                            .ok();
-
-                        window.dispatch_action(Box::new(RunToCursor), cx);
-                    })
-                    .separator()
-                })
-                .when_some(toggle_state_msg, |this, msg| {
-                    this.entry(msg, None, {
-                        let weak_editor = weak_editor.clone();
-                        let breakpoint = breakpoint.clone();
-                        move |_window, cx| {
-                            weak_editor
-                                .update(cx, |this, cx| {
-                                    this.edit_breakpoint_at_anchor(
-                                        anchor,
-                                        breakpoint.as_ref().clone(),
-                                        BreakpointEditAction::InvertState,
-                                        cx,
-                                    );
-                                })
-                                .log_err();
-                        }
-                    })
-                })
-                .entry(set_breakpoint_msg, None, {
-                    let weak_editor = weak_editor.clone();
-                    let breakpoint = breakpoint.clone();
                     move |_window, cx| {
                         weak_editor
-                            .update(cx, |this, cx| {
-                                this.edit_breakpoint_at_anchor(
-                                    anchor,
-                                    breakpoint.as_ref().clone(),
-                                    BreakpointEditAction::Toggle,
-                                    cx,
-                                );
-                            })
-                            .log_err();
-                    }
-                })
-                .entry(log_breakpoint_msg, None, {
-                    let breakpoint = breakpoint.clone();
-                    let weak_editor = weak_editor.clone();
-                    move |window, cx| {
-                        weak_editor
-                            .update(cx, |this, cx| {
-                                this.add_edit_breakpoint_block(
-                                    anchor,
-                                    breakpoint.as_ref(),
-                                    BreakpointPromptEditAction::Log,
-                                    window,
-                                    cx,
-                                );
-                            })
-                            .log_err();
-                    }
-                })
-                .entry(condition_breakpoint_msg, None, {
-                    let breakpoint = breakpoint.clone();
-                    let weak_editor = weak_editor.clone();
-                    move |window, cx| {
-                        weak_editor
-                            .update(cx, |this, cx| {
-                                this.add_edit_breakpoint_block(
-                                    anchor,
-                                    breakpoint.as_ref(),
-                                    BreakpointPromptEditAction::Condition,
-                                    window,
-                                    cx,
-                                );
-                            })
-                            .log_err();
-                    }
-                })
-                .entry(hit_condition_breakpoint_msg, None, {
-                    let breakpoint = breakpoint.clone();
-                    let weak_editor = weak_editor.clone();
-                    move |window, cx| {
-                        weak_editor
-                            .update(cx, |this, cx| {
-                                this.add_edit_breakpoint_block(
-                                    anchor,
-                                    breakpoint.as_ref(),
-                                    BreakpointPromptEditAction::HitCondition,
-                                    window,
-                                    cx,
-                                );
+                            .update(cx, |_this, cx| {
+                                let mut editor_settings = EditorSettings::get_global(cx).clone();
+                                editor_settings.gutter.line_numbers =
+                                    !editor_settings.gutter.line_numbers;
+                                EditorSettings::override_global(editor_settings, cx);
+                                cx.notify();
                             })
                             .log_err();
                     }
@@ -9564,114 +9438,39 @@ impl Editor {
         &self,
         position: Anchor,
         row: DisplayRow,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> IconButton {
-        #[derive(Clone, Copy)]
-        enum Intent {
-            SetBookmark,
-            SetBreakpoint,
-        }
-
-        impl Intent {
-            fn as_str(&self) -> &'static str {
-                match self {
-                    Intent::SetBookmark => "Set bookmark",
-                    Intent::SetBreakpoint => "Set breakpoint",
-                }
-            }
-
-            fn icon(&self) -> ui::IconName {
-                match self {
-                    Intent::SetBookmark => ui::IconName::Bookmark,
-                    Intent::SetBreakpoint => ui::IconName::DebugBreakpoint,
-                }
-            }
-
-            fn color(&self) -> Color {
-                match self {
-                    Intent::SetBookmark => Color::Info,
-                    Intent::SetBreakpoint => Color::Hint,
-                }
-            }
-
-            fn secondary_and_options(&self) -> String {
-                let alt_as_text = gpui::Keystroke {
-                    modifiers: Modifiers::secondary_key(),
-                    ..Default::default()
-                };
-                match self {
-                    Intent::SetBookmark => format!(
-                        "{alt_as_text}-click to add a breakpoint\nright-click for more options"
-                    ),
-                    Intent::SetBreakpoint => format!(
-                        "{alt_as_text}-click to add a bookmark\nright-click for more options"
-                    ),
-                }
-            }
-        }
-
-        let gutter_settings = EditorSettings::get_global(cx).gutter;
-        let show_bookmarks = self.show_bookmarks.unwrap_or(gutter_settings.bookmarks);
-        let show_breakpoints = self.show_breakpoints.unwrap_or(gutter_settings.breakpoints);
-
-        let [primary, secondary] = match [show_breakpoints, show_bookmarks] {
-            [true, true] => [Intent::SetBreakpoint, Intent::SetBookmark],
-            [true, false] => [Intent::SetBreakpoint; 2],
-            [false, true] => [Intent::SetBookmark; 2],
-            [false, false] => {
-                log::error!("Trying to place gutter_hover without anything enabled!!");
-                [Intent::SetBookmark; 2]
-            }
-        };
-
-        let intent = if window.modifiers().secondary() {
-            secondary
-        } else {
-            primary
-        };
-
         let focus_handle = self.focus_handle.clone();
         let has_context_menu = self.has_mouse_context_menu();
-        IconButton::new(("add_breakpoint_button", row.0 as usize), intent.icon())
-            .icon_size(IconSize::XSmall)
-            .size(ui::ButtonSize::None)
-            .icon_color(intent.color())
-            .style(ButtonStyle::Transparent)
-            .on_click(cx.listener({
-                move |editor, _: &ClickEvent, window, cx| {
-                    window.focus(&editor.focus_handle(cx), cx);
-                    let intent = if window.modifiers().secondary() {
-                        secondary
-                    } else {
-                        primary
-                    };
-
-                    match intent {
-                        Intent::SetBookmark => editor.toggle_bookmark_at_row(row, cx),
-                        Intent::SetBreakpoint => editor.edit_breakpoint_at_anchor(
-                            position,
-                            Breakpoint::new_standard(),
-                            BreakpointEditAction::Toggle,
-                            cx,
-                        ),
-                    }
-                }
-            }))
-            .on_right_click(cx.listener(move |editor, event: &ClickEvent, window, cx| {
-                editor.set_gutter_context_menu(row, Some(position), event.position(), window, cx);
-            }))
-            .when(!has_context_menu, |button| {
-                button.tooltip(move |_window, cx| {
-                    Tooltip::with_meta_in(
-                        intent.as_str(),
-                        Some(&ToggleBreakpoint),
-                        intent.secondary_and_options(),
-                        &focus_handle,
-                        cx,
-                    )
-                })
+        IconButton::new(
+            ("gutter_bookmark_button", row.0 as usize),
+            ui::IconName::Bookmark,
+        )
+        .icon_size(IconSize::XSmall)
+        .size(ui::ButtonSize::None)
+        .icon_color(Color::Info)
+        .style(ButtonStyle::Transparent)
+        .on_click(cx.listener({
+            move |editor, _: &ClickEvent, window, cx| {
+                window.focus(&editor.focus_handle(cx), cx);
+                editor.toggle_bookmark_at_row(row, cx);
+            }
+        }))
+        .on_right_click(cx.listener(move |editor, event: &ClickEvent, window, cx| {
+            editor.set_gutter_context_menu(row, Some(position), event.position(), window, cx);
+        }))
+        .when(!has_context_menu, |button| {
+            button.tooltip(move |_window, cx| {
+                Tooltip::with_meta_in(
+                    "Set bookmark",
+                    Some(&ToggleBookmark),
+                    "right-click for more options",
+                    &focus_handle,
+                    cx,
+                )
             })
+        })
     }
 
     fn build_tasks_context(
