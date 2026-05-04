@@ -755,8 +755,30 @@ pub async fn fetch_auth_server_metadata(
                 if reported_issuer.origin() != issuer.origin()
                     || !expected_trimmed.starts_with(reported_trimmed)
                 {
-                    bail!(
-                        "Auth server metadata issuer mismatch: expected {}, got {}",
+                    // Origins differ — check if the reported issuer is a
+                    // parent domain of the expected issuer (e.g.
+                    // mcp.slack.com → slack.com). This violates RFC 8414
+                    // but real-world servers like Slack do this.
+                    let is_parent_domain = reported_issuer.scheme() == issuer.scheme()
+                        && match (issuer.host_str(), reported_issuer.host_str()) {
+                            (Some(expected_host), Some(reported_host)) => {
+                                expected_host != reported_host
+                                    && expected_host.ends_with(&format!(".{}", reported_host))
+                            }
+                            _ => false,
+                        };
+
+                    if !is_parent_domain {
+                        bail!(
+                            "Auth server metadata issuer mismatch: expected {}, got {}",
+                            issuer,
+                            reported_issuer
+                        );
+                    }
+
+                    log::warn!(
+                        "Auth server metadata issuer is a parent domain of expected \
+                         (expected {}, got {}). Proceeding despite RFC 8414 violation.",
                         issuer,
                         reported_issuer
                     );
@@ -2277,6 +2299,85 @@ mod tests {
             assert!(
                 err_msg.contains("issuer mismatch"),
                 "should reject sibling-path issuer: {}",
+                err_msg
+            );
+        });
+    }
+
+    #[test]
+    fn test_fetch_auth_server_metadata_accepts_parent_domain_issuer() {
+        smol::block_on(async {
+            let client = make_fake_http_client(|req| {
+                Box::pin(async move {
+                    let uri = req.uri().to_string();
+                    if uri.contains(".well-known/oauth-authorization-server")
+                        || uri.contains(".well-known/openid-configuration")
+                    {
+                        // Simulates Slack's behavior: mcp.slack.com metadata
+                        // reports issuer as slack.com (parent domain).
+                        json_response(
+                            200,
+                            r#"{
+                                "issuer": "https://slack.com/",
+                                "authorization_endpoint": "https://slack.com/oauth/v2/authorize",
+                                "token_endpoint": "https://slack.com/api/oauth.v2.access",
+                                "code_challenge_methods_supported": ["S256"]
+                            }"#,
+                        )
+                    } else {
+                        json_response(404, "{}")
+                    }
+                })
+            });
+
+            let issuer = Url::parse("https://mcp.slack.com").unwrap();
+            let result = fetch_auth_server_metadata(&client, &issuer).await;
+
+            assert!(
+                result.is_ok(),
+                "should accept parent-domain issuer (mcp.slack.com -> slack.com): {:?}",
+                result.unwrap_err()
+            );
+            let metadata = result.unwrap();
+            assert_eq!(
+                metadata.authorization_endpoint.as_str(),
+                "https://slack.com/oauth/v2/authorize"
+            );
+        });
+    }
+
+    #[test]
+    fn test_fetch_auth_server_metadata_rejects_unrelated_domain_issuer() {
+        smol::block_on(async {
+            let client = make_fake_http_client(|req| {
+                Box::pin(async move {
+                    let uri = req.uri().to_string();
+                    if uri.contains(".well-known/oauth-authorization-server")
+                        || uri.contains(".well-known/openid-configuration")
+                    {
+                        json_response(
+                            200,
+                            r#"{
+                                "issuer": "https://attacker.net/",
+                                "authorization_endpoint": "https://attacker.net/authorize",
+                                "token_endpoint": "https://attacker.net/token",
+                                "code_challenge_methods_supported": ["S256"]
+                            }"#,
+                        )
+                    } else {
+                        json_response(404, "{}")
+                    }
+                })
+            });
+
+            let issuer = Url::parse("https://mcp.slack.com").unwrap();
+            let result = fetch_auth_server_metadata(&client, &issuer).await;
+
+            assert!(result.is_err());
+            let err_msg = result.unwrap_err().to_string();
+            assert!(
+                err_msg.contains("issuer mismatch"),
+                "should reject unrelated-domain issuer: {}",
                 err_msg
             );
         });
