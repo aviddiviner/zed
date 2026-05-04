@@ -145,6 +145,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - [x] Add `keymap_editor` crate (visual keybinding editor, was missing from Aleph)
 - [ ] Remove `UserStore` from `AppState` / `Project` (transitive, zero runtime cost but adds dead code)
 - [ ] First-run onboarding screen with base keymap picker (Zed's `onboarding` crate had a 2×3 icon grid using `editor_*.svg` — build Aleph-appropriate version)
+- [ ] MCP servers: inject resolved shell environment automatically when launched from Dock (currently `ProjectEnvironment::default_environment()` isn't available at server start — likely because `this.project` is None or the project hasn't wired up yet). Workaround: explicit `"env": {"PATH": "..."}` in server config. Likely fix: use `shell_env::capture()` (which already handles fish, noisy output, etc.) to resolve the user's env before servers start, then inject via `command.env`.
 
 ---
 
@@ -211,6 +212,7 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 - Some deep UI text still references "Zed" (plan chips, URLs, etc.) — cosmetic, low priority
 - JSONC trailing comma squiggles in settings file (file_types glob matches but highlighting still strict JSON in some contexts)
 - WebSearchTool still gated to Zed cloud provider only (`supports_provider` check) — see `notes/zed-gated-features.md`
+- MCP servers launched from Dock have no shell environment (PATH etc.) — macOS GUI apps get minimal env, and `ProjectEnvironment` resolution isn't available at server startup time. Workaround: set `"env": {"PATH": "..."}` in each server's config. Root cause: `ContextServerStore.project` weak ref is likely None when `maintain_servers` fires during init.
 
 ### Unresolved Questions
 
