@@ -27,6 +27,7 @@ impl ModelContextProtocol {
     fn supported_protocols() -> Vec<types::ProtocolVersion> {
         vec![
             types::ProtocolVersion(types::LATEST_PROTOCOL_VERSION.to_string()),
+            types::ProtocolVersion(types::VERSION_2025_03_26.to_string()),
             types::ProtocolVersion(types::VERSION_2024_11_05.to_string()),
         ]
     }

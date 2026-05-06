@@ -1693,7 +1693,9 @@ async fn resolve_start_failure(
         let credentials_provider = cx.update(|cx| zed_credentials_provider::global(cx));
         match ContextServerStore::load_session(&credentials_provider, &server_url, cx).await {
             Ok(Some(_)) => {
-                log::info!("{id} start failed with a cached OAuth session present; clearing it");
+                log::warn!(
+                    "{id} start failed with a cached OAuth session present (error: {err}); clearing it"
+                );
                 ContextServerStore::clear_session(&credentials_provider, &server_url, cx)
                     .await
                     .log_err();
