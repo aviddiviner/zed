@@ -29,8 +29,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use title_bar_settings::TitleBarSettings;
 use ui::{
-    Avatar, ButtonLike, ContextMenu, PopoverMenu,
-    TintColor, Tooltip, prelude::*, utils::platform_title_bar_height,
+    Avatar, ButtonLike, ContextMenu, PopoverMenu, TintColor, Tooltip, prelude::*,
+    utils::platform_title_bar_height,
 };
 use util::ResultExt;
 use workspace::{
@@ -158,12 +158,16 @@ impl Render for TitleBar {
                 .map(|name| SharedString::from(name.to_string()));
             if let Some(repo) = &repository {
                 let repo = repo.read(cx);
-                linked_worktree_name = linked_worktree_short_name(
-                    repo.original_repo_abs_path.as_ref(),
-                    repo.work_directory_abs_path.as_ref(),
-                );
+                linked_worktree_name =
+                    repo.main_worktree_abs_path()
+                        .and_then(|main_worktree_path| {
+                            linked_worktree_short_name(
+                                main_worktree_path,
+                                repo.work_directory_abs_path.as_ref(),
+                            )
+                        });
                 if let Some(name) = repo
-                    .original_repo_abs_path
+                    .repository_dir_abs_path
                     .file_name()
                     .and_then(|name| name.to_str())
                 {
@@ -192,8 +196,11 @@ impl Render for TitleBar {
                         .when(render_project_items, |title_bar| {
                             title_bar
                                 .when(title_bar_settings.show_project_items, |title_bar| {
-                                    title_bar
-                                        .child(self.render_project_name(project_name, window, cx))
+                                    title_bar.child(self.render_project_name(
+                                        project_name,
+                                        window,
+                                        cx,
+                                    ))
                                 })
                                 .when_some(
                                     repository.filter(|_| title_bar_settings.show_branch_name),
@@ -430,7 +437,6 @@ impl TitleBar {
             .max_by_key(|repo| repo.read(cx).work_directory_abs_path.as_os_str().len())
             .cloned()
     }
-
 
     pub fn render_restricted_mode(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let has_restricted_worktrees = TrustedWorktrees::try_get_global(cx)
@@ -825,9 +831,7 @@ impl TitleBar {
         let trigger = if is_signed_in && show_user_picture {
             let avatar = user_avatar.map(|avatar| Avatar::new(avatar));
 
-            ButtonLike::new("user-menu").child(
-                h_flex().children(avatar),
-            )
+            ButtonLike::new("user-menu").child(h_flex().children(avatar))
         } else {
             ButtonLike::new("user-menu")
                 .child(Icon::new(IconName::ChevronDown).size(IconSize::Small))

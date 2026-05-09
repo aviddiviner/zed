@@ -4,7 +4,7 @@ use std::{
 };
 
 use agent::{ThreadStore, ZED_AGENT_ID};
-use agent_client_protocol as acp;
+use agent_client_protocol::schema as acp;
 use anyhow::Context as _;
 use chrono::{DateTime, Utc};
 use collections::{HashMap, HashSet};
@@ -200,27 +200,30 @@ fn migrate_thread_remote_connections(cx: &mut App, migration_task: Task<anyhow::
             return Ok(());
         }
 
-        let recent_workspaces = workspace_db.recent_project_workspaces(fs.as_ref()).await?;
+        let recent_workspaces = workspace_db
+            .recent_project_workspaces_ungrouped(fs.as_ref())
+            .await?;
 
         let mut local_path_lists = HashSet::<PathList>::default();
         let mut remote_path_lists = HashMap::<PathList, RemoteConnectionOptions>::default();
 
         recent_workspaces
             .iter()
-            .filter(|(_, location, path_list, _)| {
-                !path_list.is_empty() && matches!(location, &SerializedWorkspaceLocation::Local)
+            .filter(|workspace| {
+                !workspace.paths.is_empty()
+                    && matches!(workspace.location, SerializedWorkspaceLocation::Local)
             })
-            .for_each(|(_, _, path_list, _)| {
-                local_path_lists.insert(path_list.clone());
+            .for_each(|workspace| {
+                local_path_lists.insert(workspace.paths.clone());
             });
 
-        for (_, location, path_list, _) in recent_workspaces {
-            match location {
+        for workspace in recent_workspaces {
+            match workspace.location {
                 SerializedWorkspaceLocation::Remote(remote_connection)
-                    if !local_path_lists.contains(&path_list) =>
+                    if !local_path_lists.contains(&workspace.paths) =>
                 {
                     remote_path_lists
-                        .entry(path_list)
+                        .entry(workspace.paths)
                         .or_insert(remote_connection);
                 }
                 _ => {}
@@ -469,8 +472,8 @@ pub struct ThreadMetadataStore {
     threads_by_session: HashMap<acp::SessionId, ThreadId>,
     reload_task: Option<Shared<Task<()>>>,
     conversation_subscriptions: HashMap<gpui::EntityId, Subscription>,
-    pending_thread_ops_tx: smol::channel::Sender<DbOperation>,
-    in_flight_archives: HashMap<ThreadId, (Task<()>, smol::channel::Sender<()>)>,
+    pending_thread_ops_tx: async_channel::Sender<DbOperation>,
+    in_flight_archives: HashMap<ThreadId, (Task<()>, async_channel::Sender<()>)>,
     _db_operations_task: Task<()>,
 }
 
@@ -526,7 +529,7 @@ impl ThreadMetadataStore {
     #[cfg(any(test, feature = "test-support"))]
     pub fn init_global(cx: &mut App) {
         let db_name = TestMetadataDbName::global(cx);
-        let db = smol::block_on(db::open_test_db::<ThreadMetadataDb>(&db_name));
+        let db = gpui::block_on(db::open_test_db::<ThreadMetadataDb>(&db_name));
         let thread_store = cx.new(|cx| Self::new(ThreadMetadataDb(db), cx));
         cx.set_global(GlobalThreadMetadataStore(thread_store));
     }
@@ -786,7 +789,7 @@ impl ThreadMetadataStore {
     pub fn archive(
         &mut self,
         thread_id: ThreadId,
-        archive_job: Option<(Task<()>, smol::channel::Sender<()>)>,
+        archive_job: Option<(Task<()>, async_channel::Sender<()>)>,
         cx: &mut Context<Self>,
     ) {
         self.update_archived(thread_id, true, cx);
@@ -1109,7 +1112,7 @@ impl ThreadMetadataStore {
         })
         .detach();
 
-        let (tx, rx) = smol::channel::unbounded();
+        let (tx, rx) = async_channel::unbounded();
         let _db_operations_task = cx.background_spawn({
             let db = db.clone();
             async move {
@@ -1698,8 +1701,7 @@ mod tests {
     use acp_thread::StubAgentConnection;
     use action_log::ActionLog;
     use agent::DbThread;
-    use agent_client_protocol as acp;
-
+    use agent_client_protocol::schema as acp;
     use gpui::{TestAppContext, VisualTestContext};
     use project::FakeFs;
     use project::Project;
@@ -1788,7 +1790,7 @@ mod tests {
 
     fn clear_thread_metadata_remote_connection_backfill(cx: &mut TestAppContext) {
         let kvp = cx.update(|cx| KeyValueStore::global(cx));
-        smol::block_on(kvp.delete_kvp("thread-metadata-remote-connection-backfill".to_string()))
+        gpui::block_on(kvp.delete_kvp("thread-metadata-remote-connection-backfill".to_string()))
             .unwrap();
     }
 
@@ -1811,7 +1813,7 @@ mod tests {
         let thread = std::thread::current();
         let test_name = thread.name().unwrap_or("unknown_test");
         let db_name = format!("THREAD_METADATA_DB_{}", test_name);
-        let db = ThreadMetadataDb(smol::block_on(db::open_test_db::<ThreadMetadataDb>(
+        let db = ThreadMetadataDb(gpui::block_on(db::open_test_db::<ThreadMetadataDb>(
             &db_name,
         )));
 

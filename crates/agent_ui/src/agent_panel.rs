@@ -2,7 +2,7 @@ use std::{path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 
 use acp_thread::{AcpThread, AcpThreadEvent, MentionUri, ThreadStatus};
 use agent::{ContextServerRegistry, SharedThread, ThreadStore};
-use agent_client_protocol as acp;
+use agent_client_protocol::schema as acp;
 use agent_servers::AgentServer;
 use collections::HashSet;
 use db::kvp::KeyValueStore;

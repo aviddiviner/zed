@@ -2026,7 +2026,7 @@ mod tests {
 
     #[test]
     fn test_fetch_protected_resource_metadata() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2072,7 +2072,7 @@ mod tests {
 
     #[test]
     fn test_fetch_protected_resource_metadata_prefers_www_authenticate_url() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2110,7 +2110,7 @@ mod tests {
 
     #[test]
     fn test_fetch_protected_resource_metadata_rejects_cross_origin_url() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2153,7 +2153,7 @@ mod tests {
 
     #[test]
     fn test_fetch_auth_server_metadata() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2198,7 +2198,7 @@ mod tests {
 
     #[test]
     fn test_fetch_auth_server_metadata_falls_back_to_oidc() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2231,7 +2231,7 @@ mod tests {
 
     #[test]
     fn test_fetch_auth_server_metadata_rejects_issuer_mismatch() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2425,7 +2425,7 @@ mod tests {
 
     #[test]
     fn test_full_discover_with_cimd() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2477,7 +2477,7 @@ mod tests {
 
     #[test]
     fn test_full_discover_with_dcr_fallback() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2540,7 +2540,7 @@ mod tests {
 
     #[test]
     fn test_discover_fails_without_pkce_support() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2590,7 +2590,7 @@ mod tests {
 
     #[test]
     fn test_exchange_code_success() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2641,7 +2641,7 @@ mod tests {
 
     #[test]
     fn test_refresh_tokens_success() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|req| {
                 Box::pin(async move {
                     let uri = req.uri().to_string();
@@ -2681,7 +2681,7 @@ mod tests {
 
     #[test]
     fn test_exchange_code_failure() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|_req| {
                 Box::pin(async move { json_response(400, r#"{"error": "invalid_grant"}"#) })
             });
@@ -2726,7 +2726,7 @@ mod tests {
 
     #[test]
     fn test_perform_dcr() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|_req| {
                 Box::pin(async move {
                     json_response(
@@ -2754,7 +2754,7 @@ mod tests {
 
     #[test]
     fn test_perform_dcr_failure() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let client = make_fake_http_client(|_req| {
                 Box::pin(
                     async move { json_response(403, r#"{"error": "registration_not_allowed"}"#) },
@@ -2925,7 +2925,7 @@ mod tests {
 
     #[test]
     fn test_mcp_oauth_provider_refresh_without_refresh_token_returns_false() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let session = make_test_session("token", None, None);
             let provider = McpOAuthTokenProvider::new(
                 session,
@@ -2942,7 +2942,7 @@ mod tests {
 
     #[test]
     fn test_mcp_oauth_provider_refresh_updates_session_and_notifies_channel() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let session = make_test_session("old-access", Some("my-refresh-token"), None);
             let (tx, mut rx) = futures::channel::mpsc::unbounded();
 
@@ -2976,7 +2976,7 @@ mod tests {
 
     #[test]
     fn test_mcp_oauth_provider_refresh_preserves_old_refresh_token_when_server_omits_it() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let session = make_test_session("old-access", Some("original-refresh"), None);
             let (tx, mut rx) = futures::channel::mpsc::unbounded();
 
@@ -3008,7 +3008,7 @@ mod tests {
 
     #[test]
     fn test_mcp_oauth_provider_refresh_returns_false_on_http_error() {
-        smol::block_on(async {
+        gpui::block_on(async {
             let session = make_test_session("old-access", Some("my-refresh"), None);
 
             let http_client = make_fake_http_client(|_req| {

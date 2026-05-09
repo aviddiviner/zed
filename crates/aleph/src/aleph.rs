@@ -43,6 +43,8 @@ actions!(
 );
 
 pub fn init(cx: &mut App) {
+    init_cursor_hide_mode(cx);
+
     #[cfg(target_os = "macos")]
     cx.on_action(|_: &Hide, cx| cx.hide());
     #[cfg(target_os = "macos")]
@@ -955,4 +957,25 @@ fn open_log_file(workspace: &mut Workspace, window: &mut Window, cx: &mut Contex
         .await;
     })
     .detach();
+}
+
+#[derive(Copy, Clone, Debug, settings::RegisterSetting)]
+struct CursorHideModeSetting(gpui::CursorHideMode);
+
+impl Settings for CursorHideModeSetting {
+    fn from_settings(content: &settings::settings_content::SettingsContent) -> Self {
+        Self(match content.hide_mouse.unwrap_or_default() {
+            settings::settings_content::HideMouseMode::Never => gpui::CursorHideMode::Never,
+            settings::settings_content::HideMouseMode::OnTyping => gpui::CursorHideMode::OnTyping,
+            settings::settings_content::HideMouseMode::OnTypingAndAction => {
+                gpui::CursorHideMode::OnTypingAndAction
+            }
+        })
+    }
+}
+
+fn init_cursor_hide_mode(cx: &mut App) {
+    let apply = |cx: &mut App| cx.set_cursor_hide_mode(CursorHideModeSetting::get_global(cx).0);
+    apply(cx);
+    cx.observe_global::<SettingsStore>(apply).detach();
 }
