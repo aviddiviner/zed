@@ -51,6 +51,7 @@ pub fn init(cx: &mut App) {
     cx.on_action(|_: &HideOthers, cx| cx.hide_other_apps());
     #[cfg(target_os = "macos")]
     cx.on_action(|_: &ShowAll, cx| cx.unhide_other_apps());
+    cx.on_action(|_: &About, cx| open_about_window(cx));
     cx.on_action(quit);
 
     cx.on_action(|_: &zed_actions::IncreaseBufferFontSize, cx: &mut App| {
@@ -957,6 +958,177 @@ fn open_log_file(workspace: &mut Workspace, window: &mut Window, cx: &mut Contex
         .await;
     })
     .detach();
+}
+
+fn open_about_window(cx: &mut App) {
+    use gpui::{
+        ClipboardItem, FocusHandle, Focusable, Render, Size, WindowBounds, WindowKind,
+        WindowOptions,
+    };
+    use ui::{Button, ButtonStyle, Headline, Label, LabelSize, h_flex, prelude::*, v_flex};
+
+    struct AboutWindow {
+        focus_handle: FocusHandle,
+        version_line: SharedString,
+        commit_short: Option<SharedString>,
+        commit_full: Option<String>,
+    }
+
+    impl AboutWindow {
+        fn new(cx: &mut Context<Self>) -> Self {
+            let zed_base = env!("ALEPH_ZED_BASE_VERSION");
+            let commit_sha = env!("ALEPH_COMMIT_SHA");
+
+            let debug = if cfg!(debug_assertions) {
+                " (debug)"
+            } else {
+                ""
+            };
+            let version_line: SharedString =
+                format!("Aleph Dev \u{2014} based on Zed {zed_base}{debug}").into();
+
+            let commit_short = if commit_sha.is_empty() {
+                None
+            } else {
+                Some(SharedString::from(&commit_sha[..9.min(commit_sha.len())]))
+            };
+            let commit_full = if commit_sha.is_empty() {
+                None
+            } else {
+                Some(commit_sha.to_string())
+            };
+
+            Self {
+                focus_handle: cx.focus_handle(),
+                version_line,
+                commit_short,
+                commit_full,
+            }
+        }
+
+        fn copy_details(&self, _window: &mut Window, cx: &mut Context<Self>) {
+            let content = match &self.commit_full {
+                Some(commit) => format!("{}\nCommit: {}", self.version_line, commit),
+                None => self.version_line.to_string(),
+            };
+            cx.write_to_clipboard(ClipboardItem::new_string(content));
+        }
+    }
+
+    impl Render for AboutWindow {
+        fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            v_flex()
+                .id("about-window")
+                .track_focus(&self.focus_handle)
+                .on_action(cx.listener(|_, _: &menu::Cancel, window, _cx| {
+                    window.remove_window();
+                }))
+                .size_full()
+                .bg(cx.theme().colors().editor_background)
+                .text_color(cx.theme().colors().text)
+                .p_4()
+                .when(cfg!(target_os = "macos"), |this| this.pt_10())
+                .gap_4()
+                .items_center()
+                .justify_between()
+                .child(
+                    v_flex()
+                        .w_full()
+                        .gap_2()
+                        .items_center()
+                        .child(
+                            ui::Vector::square(ui::VectorName::AlephLogo, rems(3.0))
+                                .into_any_element(),
+                        )
+                        .child(Headline::new(self.version_line.clone()))
+                        .when_some(self.commit_short.clone(), |this, commit| {
+                            this.child(
+                                Label::new("Commit")
+                                    .color(Color::Muted)
+                                    .size(LabelSize::XSmall),
+                            )
+                            .child(Label::new(commit).size(LabelSize::Small))
+                        }),
+                )
+                .child(
+                    h_flex()
+                        .w_full()
+                        .gap_1()
+                        .child(
+                            div().flex_1().child(
+                                Button::new("copy", "Copy")
+                                    .full_width()
+                                    .style(ButtonStyle::Outlined)
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.copy_details(window, cx);
+                                    })),
+                            ),
+                        )
+                        .child(
+                            div().flex_1().child(
+                                Button::new("ok", "OK")
+                                    .full_width()
+                                    .style(ButtonStyle::Filled)
+                                    .on_click(|_, window, _cx| {
+                                        window.remove_window();
+                                    }),
+                            ),
+                        ),
+                )
+        }
+    }
+
+    impl Focusable for AboutWindow {
+        fn focus_handle(&self, _cx: &App) -> FocusHandle {
+            self.focus_handle.clone()
+        }
+    }
+
+    if let Some(existing) = cx
+        .windows()
+        .into_iter()
+        .find_map(|w| w.downcast::<AboutWindow>())
+    {
+        existing
+            .update(cx, |_, window, _cx| {
+                window.activate_window();
+            })
+            .log_err();
+        return;
+    }
+
+    let window_size = Size {
+        width: px(300.0),
+        height: px(220.0),
+    };
+
+    cx.open_window(
+        WindowOptions {
+            titlebar: Some(TitlebarOptions {
+                title: Some("About Aleph".into()),
+                appears_transparent: true,
+                traffic_light_position: Some(point(px(12.), px(12.))),
+            }),
+            window_bounds: Some(WindowBounds::centered(window_size, cx)),
+            is_resizable: false,
+            is_minimizable: false,
+            kind: WindowKind::Normal,
+            app_id: Some(
+                release_channel::ReleaseChannel::global(cx)
+                    .app_id()
+                    .to_owned(),
+            ),
+            ..Default::default()
+        },
+        |window, cx| {
+            let about_window = cx.new(AboutWindow::new);
+            let focus_handle = about_window.read(cx).focus_handle.clone();
+            window.activate_window();
+            focus_handle.focus(window, cx);
+            about_window
+        },
+    )
+    .log_err();
 }
 
 #[derive(Copy, Clone, Debug, settings::RegisterSetting)]
