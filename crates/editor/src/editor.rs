@@ -29584,6 +29584,7 @@ impl Global for KillRing {}
 
 const UPDATE_DEBOUNCE: Duration = Duration::from_millis(50);
 
+#[allow(dead_code)]
 enum BreakpointPromptEditAction {
     Log,
     Condition,
