@@ -206,6 +206,8 @@ The "Agentic" part means your AI assistant isn't just autocomplete — it's a fu
 
 ### Known Issues
 
+- **⚠️ `crates/aleph/RELEASE_CHANNEL` gets reset to "stable" during upstream merges.** This file MUST contain "dev". When it's "stable", the app uses the macOS system keychain for credentials instead of the file-based store, causing relentless password prompts on every fresh build (different code signature each time). It also blocks MCP server startup (the `maintain_servers` async task suspends on keychain dialogs, so `populate_server_ids` never runs and the server list appears empty). Safeguards: `.gitattributes` marks the file `merge=ours`, and `script/build-aleph` checks it at build time. If you still hit this after a merge, just `echo 'dev' > crates/aleph/RELEASE_CHANNEL`.
+
 - Default keymap has bindings for removed features (gracefully skipped, not user-visible)
 - `languages::init` still loads all language grammars, not just Markdown (Phase 2 cleanup)
 - `node_runtime` still in deps as transitive requirement of `AppState` struct (Phase 2 cleanup)

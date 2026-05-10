@@ -1,5 +1,10 @@
 # Prevent GitHub from displaying comments within JSON files as errors.
 *.json linguist-language=JSON-with-Comments
 
+# Aleph: always keep OUR version of this file during upstream merges.
+# Upstream Zed uses crates/zed/RELEASE_CHANNEL (which says "stable").
+# Ours must stay "dev" — see ALEPH.md "Known Issues" and commit 9bacba9c.
+crates/aleph/RELEASE_CHANNEL merge=ours
+
 # Ensure the WSL script always has LF line endings, even on Windows
 crates/zed/resources/windows/zed.sh text eol=lf

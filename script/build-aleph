@@ -15,6 +15,18 @@ CARGO_TOML="$CRATE_DIR/Cargo.toml"
 
 export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
 
+# Safety check: RELEASE_CHANNEL must be "dev" for Aleph Dev builds.
+# If this is "stable", the app will use the macOS system keychain instead of
+# the file-based credential store, causing password prompts on every new build.
+# This file gets accidentally reset to "stable" during upstream Zed merges.
+RELEASE_CHANNEL=$(cat "$CRATE_DIR/RELEASE_CHANNEL" | tr -d '\n')
+if [ "$RELEASE_CHANNEL" != "dev" ]; then
+    echo "ERROR: crates/aleph/RELEASE_CHANNEL is '$RELEASE_CHANNEL' but must be 'dev'"
+    echo "       This was likely reset during an upstream merge. Fix it:"
+    echo "       echo 'dev' > crates/aleph/RELEASE_CHANNEL"
+    exit 1
+fi
+
 BUILD_ONLY=false
 if [[ "${1:-}" == "--build" ]]; then
     BUILD_ONLY=true
