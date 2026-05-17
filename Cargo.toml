@@ -138,7 +138,6 @@ members = [
     "crates/settings_content",
     "crates/settings_json",
     "crates/settings_macros",
-    "crates/settings_profile_selector",
     "crates/settings_ui",
     "crates/shell_command_parser",
     "crates/sidebar",
@@ -177,7 +176,6 @@ members = [
     "crates/watch",
     "crates/web_search",
     "crates/web_search_providers",
-    "crates/which_key",
     "crates/workspace",
     "crates/worktree",
     "crates/x_ai",
@@ -202,10 +200,6 @@ members = [
     #
     # Tooling
     #
-
-    "tooling/compliance",
-    "tooling/perf",
-    "tooling/xtask",
 ]
 exclude = []
 default-members = ["crates/aleph"]
@@ -249,7 +243,6 @@ cloud_llm_client = { path = "crates/cloud_llm_client" }
 collections = { path = "crates/collections", version = "0.1.0" }
 command_palette = { path = "crates/command_palette" }
 command_palette_hooks = { path = "crates/command_palette_hooks" }
-compliance = { path = "tooling/compliance" }
 component = { path = "crates/component" }
 
 console = "0.16"
@@ -349,10 +342,8 @@ outline = { path = "crates/outline" }
 outline_panel = { path = "crates/outline_panel" }
 panel = { path = "crates/panel" }
 paths = { path = "crates/paths" }
-perf = { path = "tooling/perf" }
 picker = { path = "crates/picker" }
 prettier = { path = "crates/prettier" }
-settings_profile_selector = { path = "crates/settings_profile_selector" }
 project = { path = "crates/project" }
 project_panel = { path = "crates/project_panel" }
 
@@ -411,8 +402,6 @@ ui_prompt = { path = "crates/ui_prompt" }
 util = { path = "crates/util" }
 util_macros = { path = "crates/util_macros" }
 vercel = { path = "crates/vercel" }
-
-which_key = { path = "crates/which_key" }
 
 watch = { path = "crates/watch" }
 web_search = { path = "crates/web_search" }
