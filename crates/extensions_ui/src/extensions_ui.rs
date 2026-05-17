@@ -29,7 +29,7 @@ use ui::{
     ToggleButtonGroupSize, ToggleButtonGroupStyle, ToggleButtonSimple, Tooltip, WithScrollbar,
     prelude::*,
 };
-use vim_mode_setting::VimModeSetting;
+
 use workspace::{
     Workspace,
     item::{Item, ItemEvent},
@@ -1553,7 +1553,7 @@ impl ExtensionsPage {
                                             .child(
                                                 Switch::new(
                                                     "enable-vim",
-                                                    if VimModeSetting::get_global(cx).0 {
+                                                    if false {
                                                         ui::ToggleState::Selected
                                                     } else {
                                                         ui::ToggleState::Unselected
