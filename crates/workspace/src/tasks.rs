@@ -3,11 +3,10 @@ use std::process::ExitStatus;
 use anyhow::Result;
 use collections::HashSet;
 use gpui::{AppContext, AsyncWindowContext, Context, Entity, Task, WeakEntity};
-use language::Buffer;
 use project::{TaskSourceKind, WorktreeId};
 use remote::ConnectionState;
 use task::{
-    DebugScenario, ResolvedTask, SaveStrategy, SharedTaskContext, SpawnInTerminal, TaskContext,
+    ResolvedTask, SaveStrategy, SpawnInTerminal, TaskContext,
     TaskHook, TaskTemplate, TaskVariables, VariableName,
 };
 use ui::Window;
@@ -139,26 +138,7 @@ impl Workspace {
         }
     }
 
-    pub fn start_debug_session(
-        &mut self,
-        scenario: DebugScenario,
-        task_context: SharedTaskContext,
-        active_buffer: Option<Entity<Buffer>>,
-        worktree_id: Option<WorktreeId>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        if let Some(provider) = self.debugger_provider.as_mut() {
-            provider.start_session(
-                scenario,
-                task_context,
-                active_buffer,
-                worktree_id,
-                window,
-                cx,
-            )
-        }
-    }
+
 
     pub fn spawn_in_terminal(
         self: &mut Workspace,

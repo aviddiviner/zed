@@ -261,11 +261,8 @@ impl Editor {
         &mut self,
         _: &ToggleInlineValues,
         _: &mut Window,
-        cx: &mut Context<Self>,
+        _cx: &mut Context<Self>,
     ) {
-        self.inline_value_cache.enabled = !self.inline_value_cache.enabled;
-
-        self.refresh_inline_values(cx);
     }
 
     pub fn toggle_inlay_hints(

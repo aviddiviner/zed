@@ -33,7 +33,7 @@ members = [
     "crates/component",
     "crates/context_server",
     "crates/credentials_provider",
-    "crates/dap",
+
 
     "crates/db",
 
@@ -259,7 +259,7 @@ context_server = { path = "crates/context_server" }
 credentials_provider = { path = "crates/credentials_provider" }
 crossbeam = "0.8.4"
 
-dap = { path = "crates/dap" }
+
 
 db = { path = "crates/db" }
 

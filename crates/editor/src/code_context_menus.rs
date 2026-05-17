@@ -15,7 +15,6 @@ use ordered_float::OrderedFloat;
 use project::lsp_store::CompletionDocumentation;
 use project::{CodeAction, Completion, TaskSourceKind};
 use project::{CompletionDisplayOptions, CompletionSource};
-use task::DebugScenario;
 use task::TaskContext;
 
 use std::sync::Arc;
@@ -1281,7 +1280,6 @@ impl CompletionsMenu {
 
             let sort_text = match &completion.source {
                 CompletionSource::Lsp { lsp_completion, .. } => lsp_completion.sort_text.as_deref(),
-                CompletionSource::Dap { sort_text } => Some(sort_text.as_str()),
                 _ => None,
             };
 
@@ -1416,10 +1414,10 @@ pub struct AvailableCodeAction {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct CodeActionContents {
     tasks: Option<Rc<ResolvedTasks>>,
     actions: Option<Rc<[AvailableCodeAction]>>,
-    debug_scenarios: Vec<DebugScenario>,
     pub(crate) context: TaskContext,
 }
 
@@ -1427,13 +1425,12 @@ impl CodeActionContents {
     pub(crate) fn new(
         tasks: Option<ResolvedTasks>,
         actions: Option<Rc<[AvailableCodeAction]>>,
-        debug_scenarios: Vec<DebugScenario>,
+        _debug_scenarios: Vec<task::DebugScenario>,
         context: TaskContext,
     ) -> Self {
         Self {
             tasks: tasks.map(Rc::new),
             actions,
-            debug_scenarios,
             context,
         }
     }
@@ -1445,7 +1442,7 @@ impl CodeActionContents {
     fn len(&self) -> usize {
         let tasks_len = self.tasks.as_ref().map_or(0, |tasks| tasks.templates.len());
         let code_actions_len = self.actions.as_ref().map_or(0, |actions| actions.len());
-        tasks_len + code_actions_len + self.debug_scenarios.len()
+        tasks_len + code_actions_len
     }
 
     pub fn is_empty(&self) -> bool {
@@ -1467,12 +1464,6 @@ impl CodeActionContents {
                     provider: available.provider.clone(),
                 })
             }))
-            .chain(
-                self.debug_scenarios
-                    .iter()
-                    .cloned()
-                    .map(CodeActionsItem::DebugScenario),
-            )
     }
 
     pub fn get(&self, mut index: usize) -> Option<CodeActionsItem> {
@@ -1489,15 +1480,11 @@ impl CodeActionContents {
                     action: available.action.clone(),
                     provider: available.provider.clone(),
                 });
-            } else {
-                index -= actions.len();
             }
         }
 
-        self.debug_scenarios
-            .get(index)
-            .cloned()
-            .map(CodeActionsItem::DebugScenario)
+        let _ = index;
+        None
     }
 }
 
@@ -1508,7 +1495,6 @@ pub enum CodeActionsItem {
         action: CodeAction,
         provider: Rc<dyn CodeActionProvider>,
     },
-    DebugScenario(DebugScenario),
 }
 
 impl CodeActionsItem {
@@ -1516,7 +1502,6 @@ impl CodeActionsItem {
         match self {
             Self::CodeAction { action, .. } => action.lsp_action.title().to_owned(),
             Self::Task(_, task) => task.resolved_label.clone(),
-            Self::DebugScenario(scenario) => scenario.label.to_string(),
         }
     }
 
@@ -1524,7 +1509,6 @@ impl CodeActionsItem {
         match self {
             Self::CodeAction { action, .. } => action.lsp_action.title().replace("\n", ""),
             Self::Task(_, task) => task.resolved_label.replace("\n", ""),
-            Self::DebugScenario(scenario) => format!("debug: {}", scenario.label),
         }
     }
 }
@@ -1678,9 +1662,6 @@ impl CodeActionsMenu {
                     CodeActionsItem::Task(_, task) => task.resolved_label.chars().count(),
                     CodeActionsItem::CodeAction { action, .. } => {
                         action.lsp_action.title().chars().count()
-                    }
-                    CodeActionsItem::DebugScenario(scenario) => {
-                        format!("debug: {}", scenario.label).chars().count()
                     }
                 })
                 .map(|(ix, _)| ix),

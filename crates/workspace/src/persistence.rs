@@ -1,7 +1,6 @@
 pub mod model;
 
 use std::{
-    borrow::Cow,
     collections::BTreeMap,
     path::{Path, PathBuf},
     str::FromStr,
@@ -23,7 +22,6 @@ use gpui::{Axis, Bounds, Task, WindowBounds, WindowId, point, size};
 use project::{
     ProjectGroupKey,
     bookmark_store::SerializedBookmark,
-    debugger::breakpoint_store::{BreakpointState, SourceBreakpoint},
     trusted_worktrees::{DbTrustedPaths, RemoteHostLocation},
 };
 
@@ -414,96 +412,6 @@ impl Column for Bookmark {
             as u32;
 
         Ok((Bookmark { row }, start_index + 1))
-    }
-}
-
-#[derive(Debug)]
-pub struct Breakpoint {
-    pub position: u32,
-    pub message: Option<Arc<str>>,
-    pub condition: Option<Arc<str>>,
-    pub hit_condition: Option<Arc<str>>,
-    pub state: BreakpointState,
-}
-
-/// Wrapper for DB type of a breakpoint
-struct BreakpointStateWrapper<'a>(Cow<'a, BreakpointState>);
-
-impl From<BreakpointState> for BreakpointStateWrapper<'static> {
-    fn from(kind: BreakpointState) -> Self {
-        BreakpointStateWrapper(Cow::Owned(kind))
-    }
-}
-
-impl StaticColumnCount for BreakpointStateWrapper<'_> {
-    fn column_count() -> usize {
-        1
-    }
-}
-
-impl Bind for BreakpointStateWrapper<'_> {
-    fn bind(&self, statement: &Statement, start_index: i32) -> anyhow::Result<i32> {
-        statement.bind(&self.0.to_int(), start_index)
-    }
-}
-
-impl Column for BreakpointStateWrapper<'_> {
-    fn column(statement: &mut Statement, start_index: i32) -> anyhow::Result<(Self, i32)> {
-        let state = statement.column_int(start_index)?;
-
-        match state {
-            0 => Ok((BreakpointState::Enabled.into(), start_index + 1)),
-            1 => Ok((BreakpointState::Disabled.into(), start_index + 1)),
-            _ => anyhow::bail!("Invalid BreakpointState discriminant {state}"),
-        }
-    }
-}
-
-impl sqlez::bindable::StaticColumnCount for Breakpoint {
-    fn column_count() -> usize {
-        // Position, log message, condition message, and hit condition message
-        4 + BreakpointStateWrapper::column_count()
-    }
-}
-
-impl sqlez::bindable::Bind for Breakpoint {
-    fn bind(
-        &self,
-        statement: &sqlez::statement::Statement,
-        start_index: i32,
-    ) -> anyhow::Result<i32> {
-        let next_index = statement.bind(&self.position, start_index)?;
-        let next_index = statement.bind(&self.message, next_index)?;
-        let next_index = statement.bind(&self.condition, next_index)?;
-        let next_index = statement.bind(&self.hit_condition, next_index)?;
-        statement.bind(
-            &BreakpointStateWrapper(Cow::Borrowed(&self.state)),
-            next_index,
-        )
-    }
-}
-
-impl Column for Breakpoint {
-    fn column(statement: &mut Statement, start_index: i32) -> Result<(Self, i32)> {
-        let position = statement
-            .column_int(start_index)
-            .with_context(|| format!("Failed to read BreakPoint at index {start_index}"))?
-            as u32;
-        let (message, next_index) = Option::<String>::column(statement, start_index + 1)?;
-        let (condition, next_index) = Option::<String>::column(statement, next_index)?;
-        let (hit_condition, next_index) = Option::<String>::column(statement, next_index)?;
-        let (state, next_index) = BreakpointStateWrapper::column(statement, next_index)?;
-
-        Ok((
-            Breakpoint {
-                position,
-                message: message.map(Arc::from),
-                condition: condition.map(Arc::from),
-                hit_condition: hit_condition.map(Arc::from),
-                state: state.0.into_owned(),
-            },
-            next_index,
-        ))
     }
 }
 
@@ -1329,50 +1237,8 @@ impl WorkspaceDb {
         }
     }
 
-    fn breakpoints(&self, workspace_id: WorkspaceId) -> BTreeMap<Arc<Path>, Vec<SourceBreakpoint>> {
-        let breakpoints: Result<Vec<(PathBuf, Breakpoint)>> = self
-            .select_bound(sql! {
-                SELECT path, breakpoint_location, log_message, condition, hit_condition, state
-                FROM breakpoints
-                WHERE workspace_id = ?
-            })
-            .and_then(|mut prepared_statement| (prepared_statement)(workspace_id));
-
-        match breakpoints {
-            Ok(bp) => {
-                if bp.is_empty() {
-                    log::debug!("Breakpoints are empty after querying database for them");
-                }
-
-                let mut map: BTreeMap<Arc<Path>, Vec<SourceBreakpoint>> = Default::default();
-
-                for (path, breakpoint) in bp {
-                    let path: Arc<Path> = path.into();
-                    map.entry(path.clone()).or_default().push(SourceBreakpoint {
-                        row: breakpoint.position,
-                        path,
-                        message: breakpoint.message,
-                        condition: breakpoint.condition,
-                        hit_condition: breakpoint.hit_condition,
-                        state: breakpoint.state,
-                    });
-                }
-
-                for (path, bps) in map.iter() {
-                    log::info!(
-                        "Got {} breakpoints from database at path: {}",
-                        bps.len(),
-                        path.to_string_lossy()
-                    );
-                }
-
-                map
-            }
-            Err(msg) => {
-                log::error!("Breakpoints query failed with msg: {msg}");
-                Default::default()
-            }
-        }
+    fn breakpoints(&self, _workspace_id: WorkspaceId) -> BTreeMap<Arc<Path>, Vec<()>> {
+        BTreeMap::default()
     }
 
     fn user_toolchains(
@@ -1489,33 +1355,6 @@ impl WorkspaceDb {
                         DELETE FROM breakpoints WHERE workspace_id = ?1;
                     )
                 )?(workspace.id).context("Clearing old breakpoints")?;
-
-                for (path, breakpoints) in workspace.breakpoints {
-                    for bp in breakpoints {
-                        let state = BreakpointStateWrapper::from(bp.state);
-                        match conn.exec_bound(sql!(
-                            INSERT INTO breakpoints (workspace_id, path, breakpoint_location,  log_message, condition, hit_condition, state)
-                            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);))?
-
-                        ((
-                            workspace.id,
-                            path.as_ref(),
-                            bp.row,
-                            bp.message,
-                            bp.condition,
-                            bp.hit_condition,
-                            state,
-                        )) {
-                            Ok(_) => {
-                                log::debug!("Stored breakpoint at row: {} in path: {}", bp.row, path.to_string_lossy())
-                            }
-                            Err(err) => {
-                                log::error!("{err}");
-                                continue;
-                            }
-                        }
-                    }
-                }
 
                 conn.exec_bound(
                     sql!(
@@ -1865,21 +1704,6 @@ impl WorkspaceDb {
             FROM workspaces
             WHERE session_id = ?1
             ORDER BY timestamp DESC
-        }
-    }
-
-    query! {
-        pub fn breakpoints_for_file(workspace_id: WorkspaceId, file_path: &Path) -> Result<Vec<Breakpoint>> {
-            SELECT breakpoint_location
-            FROM breakpoints
-            WHERE  workspace_id= ?1 AND path = ?2
-        }
-    }
-
-    query! {
-        pub fn clear_breakpoints(file_path: &Path) -> Result<()> {
-            DELETE FROM breakpoints
-            WHERE file_path = ?2
         }
     }
 
