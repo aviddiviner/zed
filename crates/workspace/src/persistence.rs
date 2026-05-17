@@ -19,16 +19,11 @@ use db::{
     sqlez_macros::sql,
 };
 use gpui::{Axis, Bounds, Task, WindowBounds, WindowId, point, size};
+use language::{LanguageName, Toolchain, ToolchainScope};
 use project::{
     ProjectGroupKey,
     bookmark_store::SerializedBookmark,
     trusted_worktrees::{DbTrustedPaths, RemoteHostLocation},
-};
-
-use language::{LanguageName, Toolchain, ToolchainScope};
-use remote::{
-    DockerConnectionOptions, RemoteConnectionIdentity, RemoteConnectionOptions,
-    SshConnectionOptions, WslConnectionOptions, remote_connection_identity,
 };
 use serde::{Deserialize, Serialize};
 use sqlez::{
@@ -48,8 +43,10 @@ use crate::{
 };
 
 use model::{
-    GroupId, ItemId, PaneId, RemoteConnectionId, SerializedItem, SerializedPane,
-    SerializedPaneGroup, SerializedWorkspace,
+    DockerConnectionOptions, GroupId, ItemId, PaneId, RemoteConnectionId,
+    RemoteConnectionIdentity, RemoteConnectionOptions, SerializedItem, SerializedPane,
+    SerializedPaneGroup, SerializedWorkspace, SshConnectionOptions, WslConnectionOptions,
+    remote_connection_identity,
 };
 
 use self::model::{DockStructure, SerializedWorkspaceLocation, SessionWorkspace};
@@ -968,6 +965,7 @@ impl WorkspaceDb {
         self.workspace_for_roots_internal(worktree_roots, None)
     }
 
+    #[cfg(test)]
     pub(crate) fn remote_workspace_for_roots<P: AsRef<Path>>(
         &self,
         worktree_roots: &[P],
@@ -1467,6 +1465,7 @@ impl WorkspaceDb {
         .await;
     }
 
+    #[cfg(test)]
     pub(crate) async fn get_or_create_remote_connection(
         &self,
         options: RemoteConnectionOptions,
@@ -2474,11 +2473,7 @@ pub struct RecentWorkspace {
 
 impl RecentWorkspace {
     pub fn project_group_key(&self) -> ProjectGroupKey {
-        let host = match &self.location {
-            SerializedWorkspaceLocation::Local => None,
-            SerializedWorkspaceLocation::Remote(options) => Some(options.clone()),
-        };
-        ProjectGroupKey::new(host, self.identity_paths.clone())
+        ProjectGroupKey::new(self.identity_paths.clone())
     }
 }
 
@@ -2586,8 +2581,7 @@ mod tests {
 
     use gpui::AppContext as _;
     use pretty_assertions::assert_eq;
-    use project::Project;
-    use remote::SshConnectionOptions;
+    use project::{Project, SshConnectionOptions};
     use serde_json::json;
     use std::{thread, time::Duration};
 

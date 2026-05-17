@@ -34,8 +34,6 @@ menu.workspace = true
 platform_title_bar.workspace = true
 project.workspace = true
 recent_projects.workspace = true
-remote.workspace = true
-remote_connection.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 settings.workspace = true
@@ -70,7 +68,5 @@ db = { workspace = true, features = ["test-support"] }
 http_client = { workspace = true, features = ["test-support"] }
 node_runtime = { workspace = true, features = ["test-support"] }
 project = { workspace = true, features = ["test-support"] }
-remote = { workspace = true, features = ["test-support"] }
-remote_connection = { workspace = true, features = ["test-support"] }
 settings = { workspace = true, features = ["test-support"] }
 workspace = { workspace = true, features = ["test-support"] }

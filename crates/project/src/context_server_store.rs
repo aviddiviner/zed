@@ -18,7 +18,6 @@ use http_client::HttpClient;
 use itertools::Itertools;
 use rand::Rng as _;
 use registry::ContextServerDescriptorRegistry;
-use remote::RemoteClient;
 use rpc::{AnyProtoClient, TypedEnvelope, proto};
 use settings::{Settings as _, SettingsStore};
 use util::{ResultExt as _, rel_path::RelPath};
@@ -269,10 +268,6 @@ enum ContextServerStoreState {
         downstream_client: Option<(u64, AnyProtoClient)>,
         is_headless: bool,
     },
-    Remote {
-        project_id: u64,
-        upstream_client: Entity<RemoteClient>,
-    },
 }
 
 pub struct ContextServerStore {
@@ -318,42 +313,19 @@ impl ContextServerStore {
         )
     }
 
-    pub fn remote(
-        project_id: u64,
-        upstream_client: Entity<RemoteClient>,
-        worktree_store: Entity<WorktreeStore>,
-        weak_project: Option<WeakEntity<Project>>,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        Self::new_internal(
-            true,
-            None,
-            ContextServerDescriptorRegistry::default_global(cx),
-            worktree_store,
-            weak_project,
-            ContextServerStoreState::Remote {
-                project_id,
-                upstream_client,
-            },
-            cx,
-        )
-    }
-
     pub fn init_headless(session: &AnyProtoClient) {
         session.add_entity_request_handler(Self::handle_get_context_server_command);
     }
 
     pub fn shared(&mut self, project_id: u64, client: AnyProtoClient) {
-        if let ContextServerStoreState::Local {
+        let ContextServerStoreState::Local {
             downstream_client, ..
-        } = &mut self.state
-        {
-            *downstream_client = Some((project_id, client));
-        }
+        } = &mut self.state;
+        *downstream_client = Some((project_id, client));
     }
 
     pub fn is_remote_project(&self) -> bool {
-        matches!(self.state, ContextServerStoreState::Remote { .. })
+        false
     }
 
     /// Returns all configured context server ids, excluding the ones that are disabled
@@ -730,22 +702,8 @@ impl ContextServerStore {
         configuration: Arc<ContextServerConfiguration>,
         cx: &mut AsyncApp,
     ) -> Result<(Arc<ContextServer>, Arc<ContextServerConfiguration>)> {
-        let remote = configuration.remote();
-        let needs_remote_command = match configuration.as_ref() {
-            ContextServerConfiguration::Custom { .. }
-            | ContextServerConfiguration::Extension { .. } => remote,
-            ContextServerConfiguration::Http { .. } => false,
-        };
-
-        let (remote_state, is_remote_project) = this.update(cx, |this, _| {
-            let remote_state = match &this.state {
-                ContextServerStoreState::Remote {
-                    project_id,
-                    upstream_client,
-                } if needs_remote_command => Some((*project_id, upstream_client.clone())),
-                _ => None,
-            };
-            (remote_state, this.is_remote_project())
+        let is_remote_project = this.update(cx, |this, _| {
+            this.is_remote_project()
         })?;
 
         let root_path: Option<Arc<Path>> = this.update(cx, |this, cx| {
@@ -769,43 +727,6 @@ impl ContextServerStore {
                     })
                 })
         })?;
-
-        let configuration = if let Some((project_id, upstream_client)) = remote_state {
-            let root_dir = root_path.as_ref().map(|p| p.display().to_string());
-
-            let response = upstream_client
-                .update(cx, |client, _| {
-                    client
-                        .proto_client()
-                        .request(proto::GetContextServerCommand {
-                            project_id,
-                            server_id: id.0.to_string(),
-                            root_dir: root_dir.clone(),
-                        })
-                })
-                .await?;
-
-            let remote_command = upstream_client.update(cx, |client, _| {
-                client.build_command(
-                    Some(response.path),
-                    &response.args,
-                    &response.env.into_iter().collect(),
-                    root_dir,
-                    None,
-                )
-            })?;
-
-            let command = ContextServerCommand {
-                path: remote_command.program.into(),
-                args: remote_command.args,
-                env: Some(remote_command.env.into_iter().collect()),
-                timeout: None,
-            };
-
-            Arc::new(ContextServerConfiguration::Custom { command, remote })
-        } else {
-            configuration
-        };
 
         if let Some(server) = this.update(cx, |this, _| {
             this.context_server_factory

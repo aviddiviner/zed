@@ -4078,7 +4078,6 @@ mod tests {
                         created_at: Some(Utc::now()),
                         interacted_at: None,
                         worktree_paths: WorktreePaths::from_folder_paths(&PathList::default()),
-                        remote_connection: None,
                         archived: false,
                     },
                     cx,

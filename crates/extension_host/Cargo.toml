@@ -36,7 +36,7 @@ moka.workspace = true
 node_runtime.workspace = true
 paths.workspace = true
 project.workspace = true
-remote.workspace = true
+
 release_channel.workspace = true
 semver.workspace = true
 serde.workspace = true

@@ -14,7 +14,7 @@ doctest = false
 
 [features]
 default = []
-test-support = ["remote/test-support", "remote_connection/test-support", "project/test-support", "workspace/test-support"]
+test-support = ["project/test-support", "workspace/test-support"]
 
 [dependencies]
 anyhow.workspace = true
@@ -37,8 +37,6 @@ paths.workspace = true
 picker.workspace = true
 project.workspace = true
 release_channel.workspace = true
-remote.workspace = true
-remote_connection.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -64,9 +62,6 @@ gpui = { workspace = true, features = ["test-support"] }
 http_client.workspace = true
 language = { workspace = true, features = ["test-support"] }
 project = { workspace = true, features = ["test-support"] }
-release_channel.workspace = true
-remote = { workspace = true, features = ["test-support"] }
-remote_connection = { workspace = true, features = ["test-support"] }
 serde_json.workspace = true
 settings = { workspace = true, features = ["test-support"] }
 workspace = { workspace = true, features = ["test-support"] }

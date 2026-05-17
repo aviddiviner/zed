@@ -278,7 +278,6 @@ dependencies = [
  "nix 0.29.0",
  "project",
  "release_channel",
- "remote",
  "reqwest_client",
  "serde",
  "serde_json",
@@ -383,8 +382,6 @@ dependencies = [
  "proto",
  "rand 0.9.3",
  "release_channel",
- "remote",
- "remote_connection",
  "reqwest_client",
  "rope",
  "rules_library",
@@ -1134,35 +1131,6 @@ dependencies = [
  "serde",
  "serde_json",
  "topological-sort",
-]
-
-[[package]]
-name = "auto_update"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "client",
- "clock",
- "ctor",
- "db",
- "futures",
- "futures-lite 1.13.0",
- "gpui",
- "http_client",
- "log",
- "parking_lot",
- "paths",
- "release_channel",
- "semver",
- "serde",
- "serde_json",
- "settings",
- "smol",
- "tempfile",
- "util",
- "which 6.0.3",
- "workspace",
- "zlog",
 ]
 
 [[package]]
@@ -4224,7 +4192,6 @@ dependencies = [
  "paths",
  "project",
  "release_channel",
- "remote",
  "reqwest_client",
  "semver",
  "serde",
@@ -4426,7 +4393,6 @@ dependencies = [
  "pretty_assertions",
  "project",
  "project_panel",
- "remote_connection",
  "serde",
  "serde_json",
  "settings",
@@ -5120,7 +5086,6 @@ dependencies = [
  "project",
  "project_panel",
  "rand 0.9.3",
- "remote_connection",
  "search",
  "serde_json",
  "settings",
@@ -5193,8 +5158,6 @@ dependencies = [
  "prompt_store",
  "proto",
  "rand 0.9.3",
- "remote",
- "remote_connection",
  "schemars 1.0.4",
  "serde",
  "serde_json",
@@ -9622,7 +9585,6 @@ dependencies = [
  "rand 0.9.3",
  "regex",
  "release_channel",
- "remote",
  "rpc",
  "schemars 1.0.4",
  "semver",
@@ -9679,7 +9641,6 @@ dependencies = [
  "pretty_assertions",
  "project",
  "rayon",
- "remote_connection",
  "schemars 1.0.4",
  "search",
  "serde",
@@ -10215,8 +10176,6 @@ dependencies = [
  "picker",
  "project",
  "release_channel",
- "remote",
- "remote_connection",
  "semver",
  "serde",
  "serde_json",
@@ -10359,59 +10318,6 @@ version = "0.1.0"
 dependencies = [
  "gpui",
  "semver",
-]
-
-[[package]]
-name = "remote"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "askpass",
- "async-trait",
- "base64 0.22.1",
- "collections",
- "fs",
- "futures",
- "gpui",
- "log",
- "parking_lot",
- "paths",
- "prost",
- "release_channel",
- "rpc",
- "schemars 1.0.4",
- "semver",
- "serde",
- "serde_json",
- "settings",
- "smol",
- "tempfile",
- "thiserror 2.0.17",
- "urlencoding",
- "util",
- "which 6.0.3",
-]
-
-[[package]]
-name = "remote_connection"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "askpass",
- "auto_update",
- "futures",
- "gpui",
- "log",
- "markdown",
- "menu",
- "release_channel",
- "remote",
- "semver",
- "settings",
- "theme_settings",
- "ui",
- "ui_input",
- "workspace",
 ]
 
 [[package]]
@@ -11593,8 +11499,6 @@ dependencies = [
  "prompt_store",
  "recent_projects",
  "release_channel",
- "remote",
- "remote_connection",
  "semver",
  "serde",
  "serde_json",
@@ -12528,8 +12432,6 @@ dependencies = [
  "project",
  "regex",
  "release_channel",
- "remote",
- "rpc",
  "schemars 1.0.4",
  "semver",
  "serde",
@@ -16079,7 +15981,6 @@ dependencies = [
  "project",
  "proptest",
  "proptest-derive",
- "remote",
  "schemars 1.0.4",
  "serde",
  "serde_json",

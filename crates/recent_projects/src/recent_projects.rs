@@ -1,6 +1,4 @@
 pub mod disconnected_overlay;
-mod remote_connections;
-mod remote_servers;
 pub mod sidebar_recent_projects;
 mod ssh_config;
 
@@ -13,12 +11,7 @@ use chrono::{DateTime, Utc};
 
 use fs::Fs;
 
-#[cfg(target_os = "windows")]
-mod wsl_picker;
 
-use remote::RemoteConnectionOptions;
-pub use remote_connection::{RemoteConnectionModal, connect};
-pub use remote_connections::{navigate_to_positions, open_remote_project};
 
 use disconnected_overlay::DisconnectedOverlay;
 use fuzzy_nucleo::{StringMatch, StringMatchCandidate, match_strings};
@@ -32,8 +25,6 @@ use picker::{
     highlighted_match_with_paths::{HighlightedMatch, HighlightedMatchWithPaths},
 };
 use project::{Worktree, git_store::Repository};
-pub use remote_connections::RemoteSettings;
-pub use remote_servers::RemoteServerProjects;
 use settings::{Settings, WorktreeId};
 use ui_input::ErasedEditor;
 use workspace::ProjectGroupKey;
@@ -280,25 +271,8 @@ pub fn init(cx: &mut App) {
                     .iter()
                     .find_map(util::paths::WslPath::from_path);
 
-                if let Some(util::paths::WslPath { distro, path }) = wsl_path {
-                    use remote::WslConnectionOptions;
-
-                    let connection_options = RemoteConnectionOptions::Wsl(WslConnectionOptions {
-                        distro_name: distro.to_string(),
-                        user: None,
-                    });
-
-                    let requesting_window = match create_new_window {
-                        false => window_handle,
-                        true => None,
-                    };
-
-                    let open_options = workspace::OpenOptions {
-                        requesting_window,
-                        ..Default::default()
-                    };
-
-                    open_remote_project(connection_options, vec![path.into()], app_state, open_options, cx).await.log_err();
+                if wsl_path.is_some() {
+                    // WSL paths are not supported in Aleph (always-local)
                     return;
                 }
 
@@ -333,38 +307,15 @@ pub fn init(cx: &mut App) {
         let create_new_window = open_wsl.create_new_window;
         with_active_or_new_workspace(cx, move |workspace, window, cx| {
             let handle = cx.entity().downgrade();
-            let fs = workspace.project().read(cx).fs().clone();
-            workspace.toggle_modal(window, cx, |window, cx| {
-                RemoteServerProjects::wsl(create_new_window, fs, window, handle, cx)
-            });
+            let _fs = workspace.project().read(cx).fs().clone();
+            // RemoteServerProjects (WSL) not available in Aleph
+            let _ = handle;
         });
     });
 
     #[cfg(target_os = "windows")]
-    cx.on_action(|open_wsl: &remote::OpenWslPath, cx| {
-        let open_wsl = open_wsl.clone();
-        with_active_or_new_workspace(cx, move |workspace, window, cx| {
-            let fs = workspace.project().read(cx).fs().clone();
-            add_wsl_distro(fs, &open_wsl.distro, cx);
-            let open_options = OpenOptions {
-                requesting_window: window.window_handle().downcast::<MultiWorkspace>(),
-                ..Default::default()
-            };
-
-            let app_state = workspace.app_state().clone();
-
-            cx.spawn_in(window, async move |_, cx| {
-                open_remote_project(
-                    RemoteConnectionOptions::Wsl(open_wsl.distro.clone()),
-                    open_wsl.paths,
-                    app_state,
-                    open_options,
-                    cx,
-                )
-                .await
-            })
-            .detach();
-        });
+    cx.on_action(|_open_wsl: &zed_actions::OpenWslPath, _cx| {
+        // WSL paths are not supported in Aleph (always-local)
     });
 
     cx.on_action(|open_recent: &OpenRecent, cx| {
@@ -432,55 +383,12 @@ pub fn init(cx: &mut App) {
             }
         }
     });
-    cx.on_action(|open_remote: &OpenRemote, cx| {
-        let from_existing_connection = open_remote.from_existing_connection;
-        let create_new_window = open_remote.create_new_window;
-        with_active_or_new_workspace(cx, move |workspace, window, cx| {
-            if from_existing_connection {
-                cx.propagate();
-                return;
-            }
-            let handle = cx.entity().downgrade();
-            let fs = workspace.project().read(cx).fs().clone();
-            workspace.toggle_modal(window, cx, |window, cx| {
-                RemoteServerProjects::new(create_new_window, fs, window, handle, cx)
-            })
-        });
+    cx.on_action(|_open_remote: &OpenRemote, cx| {
+        // Remote server projects not available in Aleph (always-local)
+        let _ = cx;
     });
 
     cx.observe_new(DisconnectedOverlay::register).detach();
-}
-
-#[cfg(target_os = "windows")]
-pub fn add_wsl_distro(
-    fs: Arc<dyn project::Fs>,
-    connection_options: &remote::WslConnectionOptions,
-    cx: &App,
-) {
-    use gpui::ReadGlobal;
-    use settings::SettingsStore;
-
-    let distro_name = connection_options.distro_name.clone();
-    let user = connection_options.user.clone();
-    SettingsStore::global(cx).update_settings_file(fs, move |setting, _| {
-        let connections = setting
-            .remote
-            .wsl_connections
-            .get_or_insert(Default::default());
-
-        if !connections
-            .iter()
-            .any(|conn| conn.distro_name == distro_name && conn.user == user)
-        {
-            use std::collections::BTreeSet;
-
-            connections.push(settings::WslConnection {
-                distro_name,
-                user,
-                projects: BTreeSet::new(),
-            })
-        }
-    });
 }
 
 pub struct RecentProjects {
@@ -573,7 +481,6 @@ impl RecentProjects {
     ) {
         let weak = cx.entity().downgrade();
         let open_folders = get_open_folders(workspace, cx);
-        let project_connection_options = workspace.project().read(cx).remote_connection_options(cx);
         let fs = Some(workspace.app_state().fs.clone());
 
         workspace.toggle_modal(window, cx, |window, cx| {
@@ -583,7 +490,6 @@ impl RecentProjects {
                 focus_handle,
                 open_folders,
                 window_project_groups,
-                project_connection_options,
                 ProjectPickerStyle::Modal,
             );
 
@@ -599,17 +505,16 @@ impl RecentProjects {
         window: &mut Window,
         cx: &mut App,
     ) -> Entity<Self> {
-        let (open_folders, project_connection_options, fs) = workspace
+        let (open_folders, fs) = workspace
             .upgrade()
             .map(|workspace| {
                 let workspace = workspace.read(cx);
                 (
                     get_open_folders(workspace, cx),
-                    workspace.project().read(cx).remote_connection_options(cx),
                     Some(workspace.app_state().fs.clone()),
                 )
             })
-            .unwrap_or_else(|| (Vec::new(), None, None));
+            .unwrap_or_else(|| (Vec::new(), None));
 
         cx.new(|cx| {
             let delegate = RecentProjectsDelegate::new(
@@ -618,7 +523,6 @@ impl RecentProjects {
                 focus_handle,
                 open_folders,
                 window_project_groups,
-                project_connection_options,
                 ProjectPickerStyle::Popover,
             );
             let list = Self::new(delegate, fs, 20., window, cx);
@@ -750,7 +654,6 @@ pub struct RecentProjectsDelegate {
     // Flag to reset index when there is a new query vs not reset index when user delete an item
     reset_selected_match_index: bool,
     has_any_non_local_projects: bool,
-    project_connection_options: Option<RemoteConnectionOptions>,
     focus_handle: FocusHandle,
     style: ProjectPickerStyle,
     actions_menu_handle: PopoverMenuHandle<ContextMenu>,
@@ -763,7 +666,6 @@ impl RecentProjectsDelegate {
         focus_handle: FocusHandle,
         open_folders: Vec<OpenFolderEntry>,
         window_project_groups: Vec<ProjectGroupKey>,
-        project_connection_options: Option<RemoteConnectionOptions>,
         style: ProjectPickerStyle,
     ) -> Self {
         let render_paths = style == ProjectPickerStyle::Modal;
@@ -777,8 +679,7 @@ impl RecentProjectsDelegate {
             create_new_window,
             render_paths,
             reset_selected_match_index: true,
-            has_any_non_local_projects: project_connection_options.is_some(),
-            project_connection_options,
+            has_any_non_local_projects: false,
             focus_handle,
             style,
             actions_menu_handle: PopoverMenuHandle::default(),
@@ -792,7 +693,7 @@ impl RecentProjectsDelegate {
             .iter()
             .all(|workspace| matches!(workspace.location, SerializedWorkspaceLocation::Local));
         self.has_any_non_local_projects =
-            self.project_connection_options.is_some() || has_non_local_recent;
+            false || has_non_local_recent;
     }
 }
 impl EventEmitter<DismissEvent> for RecentProjectsDelegate {}
@@ -1115,38 +1016,8 @@ impl PickerDelegate for RecentProjectsDelegate {
                                     );
                             }
                         }
-                        SerializedWorkspaceLocation::Remote(mut connection) => {
-                            let app_state = workspace.app_state().clone();
-                            let replace_window = if replace_current_window {
-                                window.window_handle().downcast::<MultiWorkspace>()
-                            } else {
-                                None
-                            };
-                            let open_options = OpenOptions {
-                                requesting_window: replace_window,
-                                ..Default::default()
-                            };
-                            if let RemoteConnectionOptions::Ssh(connection) = &mut connection {
-                                RemoteSettings::get_global(cx)
-                                    .fill_connection_options_from_settings(connection);
-                            };
-                            let paths = candidate_workspace_paths.paths().to_vec();
-                            cx.spawn_in(window, async move |_, cx| {
-                                open_remote_project(
-                                    connection.clone(),
-                                    paths,
-                                    app_state,
-                                    open_options,
-                                    cx,
-                                )
-                                .await
-                            })
-                            .detach_and_prompt_err(
-                                "Failed to open project",
-                                window,
-                                cx,
-                                |_, _, _| None,
-                            );
+                        SerializedWorkspaceLocation::Remote(_connection) => {
+                            // Remote workspaces are not supported in Aleph (always-local)
                         }
                     }
                 });
@@ -1217,7 +1088,7 @@ impl PickerDelegate for RecentProjectsDelegate {
                     )
                     .into_any_element();
 
-                let icon = icon_for_remote_connection(self.project_connection_options.as_ref());
+                let icon = IconName::Screen;
 
                 let tooltip_path: SharedString = path.to_string_lossy().to_string().into();
                 let tooltip_branch = branch.clone();
@@ -1297,7 +1168,7 @@ impl PickerDelegate for RecentProjectsDelegate {
                     .map(|p| p.compact().to_string_lossy().to_string())
                     .collect();
                 let tooltip_path: SharedString = ordered_paths.join("\n").into();
-                let icon = icon_for_remote_connection(self.project_connection_options.as_ref());
+                let icon = IconName::Screen;
 
                 let mut path_start_offset = 0;
                 let (match_labels, path_highlights): (Vec<_>, Vec<_>) = paths
@@ -1487,10 +1358,7 @@ impl PickerDelegate for RecentProjectsDelegate {
                     )
                     .into_any_element();
 
-                let icon = icon_for_remote_connection(match location {
-                    SerializedWorkspaceLocation::Local => None,
-                    SerializedWorkspaceLocation::Remote(options) => Some(options),
-                });
+                let icon = IconName::Screen;
 
                 Some(
                     ListItem::new(ix)
@@ -1789,17 +1657,9 @@ impl PickerDelegate for RecentProjectsDelegate {
     }
 }
 
-pub(crate) fn icon_for_remote_connection(options: Option<&RemoteConnectionOptions>) -> IconName {
-    match options {
-        None => IconName::Screen,
-        Some(options) => match options {
-            RemoteConnectionOptions::Ssh(_) => IconName::Server,
-            RemoteConnectionOptions::Wsl(_) => IconName::Linux,
-            RemoteConnectionOptions::Docker(_) => IconName::Box,
-            #[cfg(any(test, feature = "test-support"))]
-            RemoteConnectionOptions::Mock(_) => IconName::Server,
-        },
-    }
+/// Always returns `IconName::Screen` since Aleph is always-local.
+pub(crate) fn icon_for_remote_connection(_options: Option<&workspace::SerializedWorkspaceLocation>) -> IconName {
+    IconName::Screen
 }
 
 // Compute the highlighted text for the name and path

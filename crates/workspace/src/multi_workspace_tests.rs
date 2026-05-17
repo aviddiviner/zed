@@ -430,9 +430,7 @@ async fn test_find_or_create_workspace_uses_project_group_key_when_paths_are_mis
         .update_in(cx, |mw, window, cx| {
             mw.find_or_create_workspace(
                 PathList::new(&[PathBuf::from("/wt-feature-a")]),
-                None,
                 Some(project_group_key.clone()),
-                |_options, _window, _cx| Task::ready(Ok(None)),
                 &[],
                 None,
                 OpenMode::Activate,
@@ -855,7 +853,6 @@ async fn test_open_project_closes_empty_workspace_but_not_non_empty_ones(cx: &mu
             assert_eq!(
                 mw.project_group_keys(),
                 vec![ProjectGroupKey::new(
-                    None,
                     PathList::new(&[path!("/project_a")])
                 )]
             );
@@ -895,8 +892,8 @@ async fn test_open_project_closes_empty_workspace_but_not_non_empty_ones(cx: &mu
             assert_eq!(
                 mw.project_group_keys(),
                 vec![
-                    ProjectGroupKey::new(None, PathList::new(&[path!("/project_b")])),
-                    ProjectGroupKey::new(None, PathList::new(&[path!("/project_a")]))
+                    ProjectGroupKey::new(PathList::new(&[path!("/project_b")])),
+                    ProjectGroupKey::new(PathList::new(&[path!("/project_a")]))
                 ]
             );
         })

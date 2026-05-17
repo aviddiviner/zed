@@ -2,9 +2,8 @@ use std::process::ExitStatus;
 
 use anyhow::Result;
 use collections::HashSet;
-use gpui::{AppContext, AsyncWindowContext, Context, Entity, Task, WeakEntity};
+use gpui::{AppContext, AsyncWindowContext, Context, Task, WeakEntity};
 use project::{TaskSourceKind, WorktreeId};
-use remote::ConnectionState;
 use task::{
     ResolvedTask, SaveStrategy, SpawnInTerminal, TaskContext,
     TaskHook, TaskTemplate, TaskVariables, VariableName,
@@ -24,19 +23,6 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        match self.project.read(cx).remote_connection_state(cx) {
-            None | Some(ConnectionState::Connected) => {}
-            Some(
-                ConnectionState::Connecting
-                | ConnectionState::Disconnected
-                | ConnectionState::HeartbeatMissed
-                | ConnectionState::Reconnecting,
-            ) => {
-                log::warn!("Cannot schedule tasks when disconnected from a remote host");
-                return;
-            }
-        }
-
         if let Some(spawn_in_terminal) =
             task_to_resolve.resolve_task(&task_source_kind.to_id_base(), task_cx)
         {

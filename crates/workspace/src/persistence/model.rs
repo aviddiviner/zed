@@ -14,9 +14,9 @@ use gpui::{AsyncWindowContext, Entity, WeakEntity, WindowId};
 
 use language::{Toolchain, ToolchainScope};
 use project::{
-    Project, ProjectGroupKey, bookmark_store::SerializedBookmark,
+    Project, ProjectGroupKey,
+    bookmark_store::SerializedBookmark,
 };
-use remote::RemoteConnectionOptions;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -36,6 +36,92 @@ pub(crate) enum RemoteConnectionKind {
     Ssh,
     Wsl,
     Docker,
+}
+
+/// Connection options for remote hosts, retained only for backward-compatible
+/// database deserialization. Aleph is always-local so these are never created
+/// in new code paths.
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+pub enum RemoteConnectionOptions {
+    Ssh(SshConnectionOptions),
+    Wsl(WslConnectionOptions),
+    Docker(DockerConnectionOptions),
+}
+
+impl RemoteConnectionOptions {
+    pub fn display_name(&self) -> String {
+        match self {
+            Self::Ssh(opts) => {
+                if let Some(user) = &opts.username {
+                    format!("{}@{}", user, opts.host)
+                } else {
+                    opts.host.clone()
+                }
+            }
+            Self::Wsl(opts) => format!("WSL: {}", opts.distro_name),
+            Self::Docker(opts) => format!("Docker: {}", opts.name),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct SshConnectionOptions {
+    pub host: String,
+    pub port: Option<u16>,
+    pub username: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+pub struct WslConnectionOptions {
+    pub distro_name: String,
+    pub user: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DockerConnectionOptions {
+    pub container_id: String,
+    pub name: String,
+    pub remote_user: String,
+    pub upload_binary_over_docker_exec: bool,
+    pub use_podman: bool,
+    pub remote_env: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+pub enum RemoteConnectionIdentity {
+    Ssh {
+        host: String,
+        username: Option<String>,
+        port: Option<u16>,
+    },
+    Wsl {
+        distro_name: String,
+        user: Option<String>,
+    },
+    Docker {
+        container_id: String,
+        name: String,
+        remote_user: String,
+    },
+}
+
+pub fn remote_connection_identity(options: &RemoteConnectionOptions) -> RemoteConnectionIdentity {
+    match options {
+        RemoteConnectionOptions::Ssh(options) => RemoteConnectionIdentity::Ssh {
+            host: options.host.clone(),
+            username: options.username.clone(),
+            port: options.port,
+        },
+        RemoteConnectionOptions::Wsl(options) => RemoteConnectionIdentity::Wsl {
+            distro_name: options.distro_name.clone(),
+            user: options.user.clone(),
+        },
+        RemoteConnectionOptions::Docker(options) => RemoteConnectionIdentity::Docker {
+            container_id: options.container_id.clone(),
+            name: options.name.clone(),
+            remote_user: options.remote_user.clone(),
+        },
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
@@ -77,22 +163,15 @@ impl SerializedProjectGroup {
     pub fn from_group(key: &ProjectGroupKey, expanded: bool) -> Self {
         Self {
             path_list: key.path_list().serialize(),
-            location: match key.host() {
-                Some(host) => SerializedWorkspaceLocation::Remote(host),
-                None => SerializedWorkspaceLocation::Local,
-            },
+            location: SerializedWorkspaceLocation::Local,
             expanded,
         }
     }
 
     pub fn into_restored_state(self) -> SerializedProjectGroupState {
         let path_list = PathList::deserialize(&self.path_list);
-        let host = match self.location {
-            SerializedWorkspaceLocation::Local => None,
-            SerializedWorkspaceLocation::Remote(opts) => Some(opts),
-        };
         SerializedProjectGroupState {
-            key: ProjectGroupKey::new(host, path_list),
+            key: ProjectGroupKey::new(path_list),
             expanded: self.expanded,
         }
     }
