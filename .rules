@@ -1,6 +1,6 @@
 # Aleph — Agentic Writing Environment
 
-This is a fork of the Zed editor, being transformed into a creative writing tool with first-class AI agent support. The master plan lives in `ALEPH.md`.
+This is a fork of the Zed editor, being transformed into a creative writing tool with first-class AI agent support. The master plan lives in `ALEPH.md`. Concrete next steps and known bugs live in `TODO.md`.
 
 # Project principles
 
@@ -17,6 +17,7 @@ This is a fork of the Zed editor, being transformed into a creative writing tool
 * **Check command:** `export PATH="/opt/homebrew/opt/rustup/bin:$PATH" && cargo check -p aleph`
 * **Run command:** `./target/debug/aleph`
 * **Prerequisites:** Xcode (for Metal shader compiler), cmake (for wasmtime/extensions)
+* **⚠️ After upstream merges:** Check that `crates/aleph/RELEASE_CHANNEL` still contains `dev`. Git's merge machinery can incorrectly apply upstream's `stable` value (from `crates/zed/RELEASE_CHANNEL`) to our file due to common-ancestor resolution. When it's `stable`, the app uses the macOS system keychain (causing relentless password prompts on unsigned dev builds) and MCP server startup blocks on keychain dialogs. Safeguards: `.gitattributes` marks the file `merge=ours` and `script/build-aleph` checks at build time. Quick fix: `echo 'dev' > crates/aleph/RELEASE_CHANNEL`
 
 # Rust coding guidelines
 
