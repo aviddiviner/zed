@@ -19,7 +19,7 @@ members = [
     "crates/bedrock",
     "crates/breadcrumbs",
     "crates/buffer_diff",
-    "crates/channel",
+
     "crates/cli",
     "crates/client",
     "crates/clock",
@@ -239,7 +239,7 @@ aws_http_client = { path = "crates/aws_http_client" }
 bedrock = { path = "crates/bedrock" }
 breadcrumbs = { path = "crates/breadcrumbs" }
 buffer_diff = { path = "crates/buffer_diff" }
-channel = { path = "crates/channel" }
+
 cli = { path = "crates/cli" }
 client = { path = "crates/client" }
 clock = { path = "crates/clock" }
