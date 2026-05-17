@@ -13,7 +13,6 @@ members = [
     "crates/anthropic",
     "crates/askpass",
     "crates/assets",
-    "crates/audio",
     "crates/auto_update",
 
     "crates/aws_http_client",
@@ -32,30 +31,20 @@ members = [
     "crates/command_palette",
     "crates/command_palette_hooks",
     "crates/component",
-    "crates/component_preview",
     "crates/context_server",
-
     "crates/credentials_provider",
-    "crates/csv_preview",
     "crates/dap",
 
     "crates/db",
 
     "crates/deepseek",
-    "crates/denoise",
     "crates/dev_container",
-
-    "crates/docs_preprocessor",
     "crates/edit_prediction_types",
     "crates/editor",
     "crates/encoding_selector",
     "crates/env_var",
-    "crates/etw_tracing",
-
-    "crates/explorer_command_injector",
     "crates/extension",
     "crates/extension_api",
-    "crates/extension_cli",
     "crates/extension_host",
     "crates/extensions_ui",
     "crates/feature_flags",
@@ -64,7 +53,6 @@ members = [
     "crates/file_finder",
     "crates/file_icons",
     "crates/fs",
-    "crates/fs_benchmarks",
     "crates/fuzzy",
     "crates/fuzzy_nucleo",
     "crates/git",
@@ -82,7 +70,6 @@ members = [
     "crates/gpui_platform",
     "crates/gpui_tokio",
     "crates/gpui_util",
-    "crates/gpui_web",
     "crates/gpui_wgpu",
     "crates/gpui_windows",
     "crates/html_to_markdown",
@@ -90,9 +77,6 @@ members = [
     "crates/http_client_tls",
     "crates/icons",
     "crates/image_viewer",
-    "crates/input_latency_ui",
-    "crates/inspector_ui",
-
     "crates/journal",
     "crates/json_schema_store",
     "crates/keymap_editor",
@@ -113,10 +97,8 @@ members = [
     "crates/media",
     "crates/menu",
     "crates/migrator",
-    "crates/miniprofiler_ui",
     "crates/mistral",
     "crates/multi_buffer",
-    "crates/nc",
     "crates/net",
     "crates/node_runtime",
     "crates/notifications",
@@ -134,7 +116,6 @@ members = [
     "crates/platform_title_bar",
     "crates/prettier",
     "crates/project",
-    "crates/project_benchmarks",
     "crates/project_panel",
 
     "crates/prompt_store",
@@ -152,7 +133,6 @@ members = [
     "crates/rpc",
     "crates/rules_library",
     "crates/scheduler",
-    "crates/schema_generator",
     "crates/search",
     "crates/session",
     "crates/settings",
@@ -170,7 +150,6 @@ members = [
     "crates/sqlez_macros",
     "crates/streaming_diff",
     "crates/sum_tree",
-    "crates/svg_preview",
     "crates/system_specs",
     "crates/syntax_theme",
     "crates/tab_switcher",
@@ -184,7 +163,6 @@ members = [
     "crates/theme",
     "crates/theme_extension",
     "crates/theme_settings",
-    "crates/theme_importer",
     "crates/theme_selector",
     "crates/time_format",
     "crates/title_bar",
@@ -203,7 +181,6 @@ members = [
     "crates/which_key",
     "crates/workspace",
     "crates/worktree",
-    "crates/worktree_benchmarks",
     "crates/x_ai",
     "crates/zed_actions",
     "crates/zed_credentials_provider",
@@ -255,7 +232,7 @@ agent_servers = { path = "crates/agent_servers" }
 anthropic = { path = "crates/anthropic" }
 askpass = { path = "crates/askpass" }
 assets = { path = "crates/assets" }
-audio = { path = "crates/audio" }
+
 auto_update = { path = "crates/auto_update" }
 
 aws_http_client = { path = "crates/aws_http_client" }
@@ -275,13 +252,13 @@ command_palette = { path = "crates/command_palette" }
 command_palette_hooks = { path = "crates/command_palette_hooks" }
 compliance = { path = "tooling/compliance" }
 component = { path = "crates/component" }
-component_preview = { path = "crates/component_preview" }
+
 console = "0.16"
 context_server = { path = "crates/context_server" }
 
 credentials_provider = { path = "crates/credentials_provider" }
 crossbeam = "0.8.4"
-csv_preview = { path = "crates/csv_preview"}
+
 dap = { path = "crates/dap" }
 
 db = { path = "crates/db" }
@@ -294,7 +271,7 @@ dialoguer = { version = "0.12", default-features = false }
 editor = { path = "crates/editor" }
 encoding_selector = { path = "crates/encoding_selector" }
 env_var = { path = "crates/env_var" }
-etw_tracing = { path = "crates/etw_tracing" }
+
 
 extension = { path = "crates/extension" }
 extension_host = { path = "crates/extension_host" }
@@ -320,7 +297,7 @@ gpui_linux = { path = "crates/gpui_linux", default-features = false }
 gpui_macos = { path = "crates/gpui_macos", default-features = false }
 gpui_macros = { path = "crates/gpui_macros" }
 gpui_platform = { path = "crates/gpui_platform", default-features = false }
-gpui_web = { path = "crates/gpui_web" }
+
 gpui_wgpu = { path = "crates/gpui_wgpu" }
 gpui_windows = { path = "crates/gpui_windows", default-features = false }
 gpui_tokio = { path = "crates/gpui_tokio" }
@@ -332,7 +309,7 @@ icons = { path = "crates/icons" }
 image_viewer = { path = "crates/image_viewer" }
 edit_prediction_types = { path = "crates/edit_prediction_types" }
 
-inspector_ui = { path = "crates/inspector_ui" }
+
 
 journal = { path = "crates/journal" }
 json_schema_store = { path = "crates/json_schema_store" }
@@ -351,15 +328,15 @@ lmstudio = { path = "crates/lmstudio" }
 lsp = { path = "crates/lsp" }
 markdown = { path = "crates/markdown" }
 markdown_preview = { path = "crates/markdown_preview" }
-svg_preview = { path = "crates/svg_preview" }
+
 media = { path = "crates/media" }
 menu = { path = "crates/menu" }
 mermaid-rs-renderer = { git = "https://github.com/zed-industries/mermaid-rs-renderer", rev = "374db9ead5426697c6c2111151d9f246899bc638", default-features = false }
 migrator = { path = "crates/migrator" }
 mistral = { path = "crates/mistral" }
 multi_buffer = { path = "crates/multi_buffer" }
-miniprofiler_ui = { path = "crates/miniprofiler_ui" }
-nc = { path = "crates/nc" }
+
+
 net = { path = "crates/net" }
 node_runtime = { path = "crates/node_runtime" }
 notifications = { path = "crates/notifications" }
@@ -574,8 +551,8 @@ jupyter-websocket-client = "1.1.0"
 libc = "0.2"
 libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
 linkify = "0.10.0"
-libwebrtc = "0.3.26"
-livekit = { version = "0.7.32", features = ["tokio", "rustls-tls-native-roots"] }
+
+
 log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
 lsp-types = { git = "https://github.com/zed-industries/lsp-types", rev = "f4dfa89a21ca35cd929b70354b1583fabae325f8" }
 mach2 = "0.5"
@@ -766,7 +743,7 @@ wax = "0.7"
 which = "6.0.0"
 wasm-bindgen = "0.2.113"
 web-time = "1.1.0"
-webrtc-sys = "0.3.23"
+
 wgpu = { git = "https://github.com/zed-industries/wgpu.git", branch = "v29" }
 windows-core = "0.61"
 yaml-rust2 = "0.8"
@@ -839,9 +816,7 @@ notify = { git = "https://github.com/zed-industries/notify.git", rev = "ce58c24c
 notify-types = { git = "https://github.com/zed-industries/notify.git", rev = "ce58c24cad542c28e04ced02e20325a4ec28a31d" }
 windows-capture = { git = "https://github.com/zed-industries/windows-capture.git", rev = "f0d6c1b6691db75461b732f6d5ff56eed002eeb9" }
 calloop = { git = "https://github.com/zed-industries/calloop" }
-livekit = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev = "147fbca3d4b592d96d33f5e6a84b59fc0b5d9bf1" }
-libwebrtc = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev = "147fbca3d4b592d96d33f5e6a84b59fc0b5d9bf1" }
-webrtc-sys = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev = "147fbca3d4b592d96d33f5e6a84b59fc0b5d9bf1" }
+
 
 [profile.dev]
 split-debuginfo = "unpacked"

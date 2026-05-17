@@ -95,7 +95,6 @@ theme_selector.workspace = true
 
 # Utilities
 assets.workspace = true
-audio.workspace = true
 client.workspace = true
 node_runtime.workspace = true
 reqwest_client.workspace = true

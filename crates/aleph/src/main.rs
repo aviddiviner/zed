@@ -313,7 +313,6 @@ fn main() {
         editor::init(cx);
         image_viewer::init(cx);
 
-        audio::init(cx);
         workspace::init(app_state.clone(), cx);
         title_bar::init(cx);
 

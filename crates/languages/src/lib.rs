@@ -40,7 +40,6 @@ pub fn init(languages: Arc<LanguageRegistry>, cx: &mut App) {
         LanguageInfo { name: "yaml" },
         LanguageInfo { name: "diff" },
         LanguageInfo { name: "gitcommit" },
-        LanguageInfo { name: "python" },
         LanguageInfo {
             name: "zed-keybind-context",
         },
